@@ -9,20 +9,61 @@ import { Platform } from 'react-native';
 
 export const Colors = {
   light: {
-    text: '#000000',
-    background: '#ffffff',
-    backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
-    textSecondary: '#60646C',
+    text: '#0F172A',
+    background: '#F8FAFC',
+    backgroundElement: '#EDF2F7',
+    backgroundSelected: '#E2E8F0',
+    textSecondary: '#64748B',
+    primary: '#6366F1',
+    primaryDark: '#4F46E5',
+    primaryLight: '#EEF2FF',
+    card: '#FFFFFF',
+    cardBorder: '#E2E8F0',
+    tint: '#6366F1',
+    success: '#10B981',
+    warning: '#F59E0B',
+    danger: '#EF4444',
+    streak: '#F97316',
+    border: '#E2E8F0',
   },
   dark: {
-    text: '#ffffff',
-    background: '#000000',
-    backgroundElement: '#212225',
-    backgroundSelected: '#2E3135',
-    textSecondary: '#B0B4BA',
+    text: '#F8FAFC',
+    background: '#0B0F19',
+    backgroundElement: '#1A2035',
+    backgroundSelected: '#242C48',
+    textSecondary: '#94A3B8',
+    primary: '#818CF8',
+    primaryDark: '#6366F1',
+    primaryLight: '#1E1B4B',
+    card: '#13192B',
+    cardBorder: '#232D48',
+    tint: '#818CF8',
+    success: '#34D399',
+    warning: '#FBBF24',
+    danger: '#F87171',
+    streak: '#FB923C',
+    border: '#232D48',
   },
 } as const;
+
+export const PriorityColors = {
+  high: {
+    bg: '#FEE2E2',
+    text: '#DC2626',
+    border: '#FCA5A5',
+  },
+  medium: {
+    bg: '#FEF3C7',
+    text: '#D97706',
+    border: '#FCD34D',
+  },
+  low: {
+    bg: '#ECFDF5',
+    text: '#059669',
+    border: '#A7F3D0',
+  },
+} as const;
+
 
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 

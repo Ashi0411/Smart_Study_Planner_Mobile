@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "temp-app",
-    "slug": "temp-app",
+    "name": "Smart Study Planner",
+    "slug": "smart-study-planner",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "tempapp",
+    "scheme": "smartstudyplanner",
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon"
