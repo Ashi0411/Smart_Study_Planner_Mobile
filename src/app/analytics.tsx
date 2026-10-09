@@ -4,14 +4,12 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  useColorScheme,
   Pressable,
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useStudy } from '@/context/StudyContext';
-import { Colors } from '@/constants/theme';
 import { StatCard } from '@/components/study/StatCard';
 
 const WEEK_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -26,10 +24,9 @@ export default function AnalyticsScreen() {
     focusLogs,
     streakDays,
     todayFocusMinutes,
-    resetToSampleData,
+    clearAllData,
+    colors,
   } = useStudy();
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
 
   const completedTasks = tasks.filter((t) => t.completed).length;
   const totalTasks = tasks.length;
@@ -40,16 +37,16 @@ export default function AnalyticsScreen() {
 
   const handleReset = () => {
     Alert.alert(
-      'Reset Demo Data?',
-      'This will reset tasks, schedule, and study streak back to the default sample dataset.',
+      'Clear Planner Data?',
+      'This will clear tasks, schedule, work plans, and focus history so you can start fresh.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Reset',
+          text: 'Clear All',
           style: 'destructive',
           onPress: async () => {
-            await resetToSampleData();
-            Alert.alert('Reset Complete', 'Sample study data has been refreshed!');
+            await clearAllData();
+            Alert.alert('Planner Cleared', 'Your planner data has been reset to empty!');
           },
         },
       ]

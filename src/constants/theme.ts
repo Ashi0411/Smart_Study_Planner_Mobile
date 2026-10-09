@@ -46,6 +46,8 @@ export const Colors = {
   },
 } as const;
 
+export type ColorPalette = typeof Colors.light | typeof Colors.dark;
+
 export const PriorityColors = {
   high: {
     bg: '#FEE2E2',

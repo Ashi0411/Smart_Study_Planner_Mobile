@@ -1,7 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet, useColorScheme } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '@/constants/theme';
+import { useStudy } from '@/context/StudyContext';
 
 interface Props {
   icon: keyof typeof Ionicons.glyphMap;
@@ -12,8 +12,7 @@ interface Props {
 }
 
 export const StatCard: React.FC<Props> = ({ icon, iconColor, value, label, sublabel }) => {
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
+  const { colors } = useStudy();
 
   return (
     <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>

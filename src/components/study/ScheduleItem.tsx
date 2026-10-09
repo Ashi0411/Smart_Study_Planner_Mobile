@@ -1,9 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet, Pressable, useColorScheme } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ScheduleSession } from '@/types/study';
 import { useStudy } from '@/context/StudyContext';
-import { Colors } from '@/constants/theme';
 import { SubjectBadge } from './SubjectBadge';
 
 interface Props {
@@ -11,9 +10,7 @@ interface Props {
 }
 
 export const ScheduleItem: React.FC<Props> = ({ session }) => {
-  const { toggleScheduleSession, deleteScheduleSession, getSubjectById } = useStudy();
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
+  const { toggleScheduleSession, deleteScheduleSession, getSubjectById, colors } = useStudy();
   const subject = getSubjectById(session.subjectId);
   const accentColor = subject?.color || colors.primary;
 

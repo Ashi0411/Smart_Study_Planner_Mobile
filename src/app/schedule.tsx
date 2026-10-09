@@ -5,13 +5,11 @@ import {
   StyleSheet,
   Pressable,
   ScrollView,
-  useColorScheme,
   FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useStudy } from '@/context/StudyContext';
-import { Colors } from '@/constants/theme';
 import { ScheduleItem } from '@/components/study/ScheduleItem';
 import { ModalAddSchedule } from '@/components/study/ModalAddSchedule';
 
@@ -26,9 +24,7 @@ const DAYS = [
 ];
 
 export default function ScheduleScreen() {
-  const { schedule } = useStudy();
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
+  const { schedule, colors } = useStudy();
 
   const todayDayOfWeek = new Date().getDay();
   const [selectedDay, setSelectedDay] = useState<number>(todayDayOfWeek);

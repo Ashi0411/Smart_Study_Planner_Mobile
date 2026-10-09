@@ -1,9 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet, Pressable, useColorScheme } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { StudyTask } from '@/types/study';
 import { useStudy } from '@/context/StudyContext';
-import { Colors } from '@/constants/theme';
 import { SubjectBadge } from './SubjectBadge';
 import { PriorityBadge } from './PriorityBadge';
 
@@ -12,9 +11,7 @@ interface Props {
 }
 
 export const TaskItem: React.FC<Props> = ({ task }) => {
-  const { toggleTask, deleteTask, getSubjectById } = useStudy();
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
+  const { toggleTask, deleteTask, getSubjectById, colors } = useStudy();
   const subject = getSubjectById(task.subjectId);
 
   const todayStr = new Date().toISOString().split('T')[0];

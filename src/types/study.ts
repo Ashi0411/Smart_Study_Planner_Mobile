@@ -1,4 +1,5 @@
 export type Priority = 'high' | 'medium' | 'low';
+export type ThemeMode = 'light' | 'dark' | 'system';
 
 export interface Subject {
   id: string;
@@ -38,6 +39,25 @@ export interface FocusLog {
   mode: FocusMode;
   durationMinutes: number;
   timestamp: string;
+}
+
+export interface SubPlan {
+  id: string;
+  title: string;
+  description?: string;
+  estimatedMinutes: number;
+  completed: boolean;
+  dueDate?: string;
+}
+
+export interface WorkPlan {
+  id: string;
+  title: string;
+  subjectId: string;
+  goalDescription?: string;
+  targetDeadline: string; // YYYY-MM-DD
+  subPlans: SubPlan[];
+  createdAt: string;
 }
 
 export interface StudyStats {

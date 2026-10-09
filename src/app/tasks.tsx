@@ -5,22 +5,18 @@ import {
   StyleSheet,
   Pressable,
   ScrollView,
-  useColorScheme,
   FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useStudy } from '@/context/StudyContext';
-import { Colors } from '@/constants/theme';
 import { TaskItem } from '@/components/study/TaskItem';
 import { ModalAddTask } from '@/components/study/ModalAddTask';
 
 type FilterType = 'all' | 'pending' | 'completed' | 'high';
 
 export default function TasksScreen() {
-  const { tasks, subjects } = useStudy();
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
+  const { tasks, subjects, colors } = useStudy();
 
   const [activeFilter, setActiveFilter] = useState<FilterType>('pending');
   const [selectedSubjectFilter, setSelectedSubjectFilter] = useState<string>('all');

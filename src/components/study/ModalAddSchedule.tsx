@@ -7,13 +7,11 @@ import {
   StyleSheet,
   Pressable,
   ScrollView,
-  useColorScheme,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useStudy } from '@/context/StudyContext';
-import { Colors } from '@/constants/theme';
 
 interface Props {
   visible: boolean;
@@ -36,9 +34,7 @@ export const ModalAddSchedule: React.FC<Props> = ({
   onClose,
   defaultDayOfWeek = new Date().getDay(),
 }) => {
-  const { subjects, addScheduleSession } = useStudy();
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
+  const { subjects, addScheduleSession, colors } = useStudy();
 
   const [topic, setTopic] = useState('');
   const [selectedSubjectId, setSelectedSubjectId] = useState(subjects[0]?.id || '');

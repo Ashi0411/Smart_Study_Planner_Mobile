@@ -5,36 +5,39 @@ import {
   StyleSheet,
   ScrollView,
   Pressable,
-  useColorScheme,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useStudy } from '@/context/StudyContext';
-import { Colors } from '@/constants/theme';
 import { StatCard } from '@/components/study/StatCard';
 import { TaskItem } from '@/components/study/TaskItem';
 import { ScheduleItem } from '@/components/study/ScheduleItem';
+import { WorkPlanCard } from '@/components/study/WorkPlanCard';
 import { ModalAddTask } from '@/components/study/ModalAddTask';
 import { ModalAddSchedule } from '@/components/study/ModalAddSchedule';
+import { ModalAddWorkPlan } from '@/components/study/ModalAddWorkPlan';
 
 export default function HomeScreen() {
   const router = useRouter();
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
 
   const {
     todaySchedule,
     tasks,
+    workPlans,
     streakDays,
     todayFocusMinutes,
     dailyGoalMinutes,
     pendingTasksCount,
     subjects,
+    themeMode,
+    colors,
+    toggleThemeMode,
   } = useStudy();
 
   const [isTaskModalVisible, setIsTaskModalVisible] = useState(false);
   const [isScheduleModalVisible, setIsScheduleModalVisible] = useState(false);
+  const [isWorkPlanModalVisible, setIsWorkPlanModalVisible] = useState(false);
 
   // Today formatted
   const todayDate = new Date();
@@ -65,12 +68,92 @@ export default function HomeScreen() {
             <Text style={[styles.greetingText, { color: colors.text }]}>Hello, Scholar 🎓</Text>
           </View>
 
-          {/* Streak Badge */}
-          <View style={[styles.streakBadge, { backgroundColor: colors.streak + '1F', borderColor: colors.streak + '4D' }]}>
-            <Text style={styles.streakFire}>🔥</Text>
-            <Text style={[styles.streakCount, { color: colors.streak }]}>{streakDays} Days</Text>
+          {/* Right Header Actions: Theme Toggle & Streak Badge */}
+          <View style={styles.headerActions}>
+            {/* Theme Toggle Button (Light/Dark) */}
+            <Pressable
+              onPress={toggleThemeMode}
+              hitSlop={8}
+              style={[
+                styles.themeBtn,
+                { backgroundColor: colors.card, borderColor: colors.cardBorder },
+              ]}>
+              <Ionicons
+                name={themeMode === 'light' ? 'moon' : 'sunny'}
+                size={18}
+                color={themeMode === 'light' ? colors.text : '#FBBF24'}
+              />
+            </Pressable>
+
+            {/* Streak Badge */}
+            <View
+              style={[
+                styles.streakBadge,
+                { backgroundColor: colors.streak + '1F', borderColor: colors.streak + '4D' },
+              ]}>
+              <Text style={styles.streakFire}>🔥</Text>
+              <Text style={[styles.streakCount, { color: colors.streak }]}>{streakDays}d</Text>
+            </View>
           </View>
         </View>
+
+        {/* AI Work Plan Hero Banner */}
+        <View
+          style={[
+            styles.aiHeroBanner,
+            { backgroundColor: colors.card, borderColor: colors.cardBorder },
+          ]}>
+          <View style={styles.aiHeroContent}>
+            <View style={styles.aiPillRow}>
+              <View style={[styles.aiPill, { backgroundColor: colors.primaryLight }]}>
+                <Ionicons name="sparkles" size={13} color={colors.primary} />
+                <Text style={[styles.aiPillText, { color: colors.primary }]}>AI STUDY BOT</Text>
+              </View>
+              <Text style={[styles.aiHeroBadge, { color: colors.textSecondary }]}>
+                Smart Curriculum Breakdown
+              </Text>
+            </View>
+
+            <Text style={[styles.aiHeroTitle, { color: colors.text }]}>
+              Create a Work Plan
+            </Text>
+            <Text style={[styles.aiHeroSub, { color: colors.textSecondary }]}>
+              Enter any exam or assignment goal. The AI bot will break it down into structured sub-plans and milestones.
+            </Text>
+
+            <Pressable
+              onPress={() => setIsWorkPlanModalVisible(true)}
+              style={[styles.aiActionBtn, { backgroundColor: colors.primary }]}>
+              <Ionicons name="add-circle" size={18} color="#FFF" />
+              <Text style={styles.aiActionBtnText}>+ Add Work Plan with AI</Text>
+            </Pressable>
+          </View>
+        </View>
+
+        {/* Active Work Plans Section */}
+        {workPlans.length > 0 && (
+          <View style={styles.sectionWrap}>
+            <View style={styles.sectionHeader}>
+              <View>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>My Work Plans</Text>
+                <Text style={[styles.sectionSub, { color: colors.textSecondary }]}>
+                  {workPlans.length} active study plan{workPlans.length !== 1 ? 's' : ''}
+                </Text>
+              </View>
+
+              <Pressable
+                onPress={() => setIsWorkPlanModalVisible(true)}
+                style={({ pressed }) => [styles.sectionAddBtn, pressed && { opacity: 0.7 }]}>
+                <Ionicons name="add-circle-outline" size={18} color={colors.primary} />
+                <Text style={[styles.sectionAddText, { color: colors.primary }]}>New Plan</Text>
+              </Pressable>
+            </View>
+
+            {workPlans.map((plan) => (
+              <WorkPlanCard key={plan.id} plan={plan} />
+            ))}
+          </View>
+        )}
 
         {/* Daily Goal Card */}
         <View
@@ -150,7 +233,7 @@ export default function HomeScreen() {
             ]}>
             <Ionicons name="calendar-outline" size={32} color={colors.textSecondary} />
             <Text style={[styles.emptyCardText, { color: colors.textSecondary }]}>
-              No scheduled classes today. Enjoy your self-study time!
+              No classes scheduled for today. Tap &ldquo;Add&rdquo; above to schedule a session.
             </Text>
           </View>
         )}
@@ -158,9 +241,9 @@ export default function HomeScreen() {
         {/* Urgent & Priority Tasks Section */}
         <View style={[styles.sectionHeader, { marginTop: 24 }]}>
           <View>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Urgent Tasks</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Tasks & Assignments</Text>
             <Text style={[styles.sectionSub, { color: colors.textSecondary }]}>
-              Priority assignments & deadlines
+              {tasks.length} total tasks
             </Text>
           </View>
 
@@ -180,22 +263,24 @@ export default function HomeScreen() {
               styles.emptyCard,
               { backgroundColor: colors.card, borderColor: colors.cardBorder },
             ]}>
-            <Ionicons name="sparkles-outline" size={32} color={colors.success} />
+            <Ionicons name="checkbox-outline" size={32} color={colors.textSecondary} />
             <Text style={[styles.emptyCardText, { color: colors.textSecondary }]}>
-              All caught up on urgent tasks!
+              No tasks added yet. Tap &ldquo;Add&rdquo; above or generate a work plan with sub-plans!
             </Text>
           </View>
         )}
 
         {/* View All Tasks Button */}
-        <Pressable
-          onPress={() => router.push('/tasks')}
-          style={[styles.viewAllBtn, { borderColor: colors.cardBorder }]}>
-          <Text style={[styles.viewAllText, { color: colors.primary }]}>View All Tasks ({tasks.length})</Text>
-          <Ionicons name="arrow-forward" size={16} color={colors.primary} />
-        </Pressable>
+        {tasks.length > 0 && (
+          <Pressable
+            onPress={() => router.push('/tasks')}
+            style={[styles.viewAllBtn, { borderColor: colors.cardBorder }]}>
+            <Text style={[styles.viewAllText, { color: colors.primary }]}>View All Tasks ({tasks.length})</Text>
+            <Ionicons name="arrow-forward" size={16} color={colors.primary} />
+          </Pressable>
+        )}
 
-        {/* Subjects Carousel / Grid */}
+        {/* Subjects Carousel */}
         <View style={[styles.sectionHeader, { marginTop: 24 }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Enrolled Subjects</Text>
         </View>
@@ -221,6 +306,10 @@ export default function HomeScreen() {
       </ScrollView>
 
       {/* Modals */}
+      <ModalAddWorkPlan
+        visible={isWorkPlanModalVisible}
+        onClose={() => setIsWorkPlanModalVisible(false)}
+      />
       <ModalAddTask visible={isTaskModalVisible} onClose={() => setIsTaskModalVisible(false)} />
       <ModalAddSchedule
         visible={isScheduleModalVisible}
@@ -242,7 +331,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 20,
+    marginBottom: 18,
   },
   dateText: {
     fontSize: 11,
@@ -255,21 +344,96 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
     marginTop: 2,
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  themeBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   streakBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 14,
     borderWidth: 1,
-    gap: 4,
+    gap: 3,
   },
   streakFire: {
-    fontSize: 14,
+    fontSize: 13,
   },
   streakCount: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
+  },
+  aiHeroBanner: {
+    padding: 18,
+    borderRadius: 20,
+    borderWidth: 1,
+    marginBottom: 20,
+    shadowColor: '#6366F1',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  aiHeroContent: {
+    gap: 8,
+  },
+  aiPillRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  aiPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  aiPillText: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  aiHeroBadge: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  aiHeroTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+  },
+  aiHeroSub: {
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  aiActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 14,
+    marginTop: 4,
+  },
+  aiActionBtnText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  sectionWrap: {
+    marginBottom: 8,
   },
   goalCard: {
     padding: 16,
@@ -367,6 +531,7 @@ const styles = StyleSheet.create({
   emptyCardText: {
     fontSize: 13,
     textAlign: 'center',
+    lineHeight: 18,
   },
   viewAllBtn: {
     flexDirection: 'row',

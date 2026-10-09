@@ -7,14 +7,12 @@ import {
   StyleSheet,
   Pressable,
   ScrollView,
-  useColorScheme,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useStudy } from '@/context/StudyContext';
 import { Priority } from '@/types/study';
-import { Colors } from '@/constants/theme';
 
 interface Props {
   visible: boolean;
@@ -22,9 +20,7 @@ interface Props {
 }
 
 export const ModalAddTask: React.FC<Props> = ({ visible, onClose }) => {
-  const { subjects, addTask } = useStudy();
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
+  const { subjects, addTask, colors } = useStudy();
 
   const [title, setTitle] = useState('');
   const [selectedSubjectId, setSelectedSubjectId] = useState(subjects[0]?.id || '');

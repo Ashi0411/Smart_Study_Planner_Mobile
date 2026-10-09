@@ -5,13 +5,11 @@ import {
   StyleSheet,
   Pressable,
   ScrollView,
-  useColorScheme,
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useStudy } from '@/context/StudyContext';
-import { Colors } from '@/constants/theme';
 import { FocusMode } from '@/types/study';
 import { SubjectBadge } from '@/components/study/SubjectBadge';
 
@@ -22,9 +20,7 @@ const MODE_DURATIONS: Record<FocusMode, number> = {
 };
 
 export default function FocusScreen() {
-  const { subjects, logFocusSession, todayFocusMinutes } = useStudy();
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
+  const { subjects, logFocusSession, todayFocusMinutes, colors } = useStudy();
 
   const [mode, setMode] = useState<FocusMode>('pomodoro');
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>(subjects[0]?.id || '');
