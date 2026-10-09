@@ -3,6 +3,7 @@ import { Platform, View, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as SplashScreen from 'expo-splash-screen';
 import { StudyProvider, useStudy } from '@/context/StudyContext';
+import { AuthProvider } from '@/context/AuthContext';
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 
 SplashScreen.preventAutoHideAsync();
@@ -118,6 +119,18 @@ function InnerTabs() {
           href: null,
         }}
       />
+      <Tabs.Screen
+        name="auth/login"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="auth/register"
+        options={{
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }
@@ -153,9 +166,11 @@ const styles = StyleSheet.create({
 
 export default function RootLayout() {
   return (
-    <StudyProvider>
-      <AnimatedSplashOverlay />
-      <InnerTabs />
-    </StudyProvider>
+    <AuthProvider>
+      <StudyProvider>
+        <AnimatedSplashOverlay />
+        <InnerTabs />
+      </StudyProvider>
+    </AuthProvider>
   );
 }

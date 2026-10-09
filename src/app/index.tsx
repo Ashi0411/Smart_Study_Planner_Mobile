@@ -16,6 +16,7 @@ import { ModalAddTask } from '@/components/study/ModalAddTask';
 import { ModalAddSchedule } from '@/components/study/ModalAddSchedule';
 import { ModalAddWorkPlan } from '@/components/study/ModalAddWorkPlan';
 import { ModalAddCategory } from '@/components/study/ModalAddCategory';
+import { AccountModal } from '@/components/auth/AccountModal';
 import { StudyTask } from '@/types/study';
 
 // Pastel palette for Today's Task horizontal cards
@@ -75,7 +76,6 @@ export default function HomeScreen() {
     tasks,
     themeMode,
     colors,
-    toggleThemeMode,
     toggleTask,
   } = useStudy();
 
@@ -83,6 +83,7 @@ export default function HomeScreen() {
   const [isScheduleModalVisible, setIsScheduleModalVisible] = useState(false);
   const [isWorkPlanModalVisible, setIsWorkPlanModalVisible] = useState(false);
   const [isCategoryModalVisible, setIsCategoryModalVisible] = useState(false);
+  const [isAccountModalVisible, setIsAccountModalVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchActive, setIsSearchActive] = useState(false);
 
@@ -139,7 +140,7 @@ export default function HomeScreen() {
         <View style={styles.topHeader}>
           <Pressable
             hitSlop={10}
-            onPress={toggleThemeMode}
+            onPress={() => setIsAccountModalVisible(true)}
             style={styles.iconButton}>
             <Ionicons name="menu-outline" size={26} color={colors.text} />
           </Pressable>
@@ -428,6 +429,10 @@ export default function HomeScreen() {
       <ModalAddCategory
         visible={isCategoryModalVisible}
         onClose={() => setIsCategoryModalVisible(false)}
+      />
+      <AccountModal
+        visible={isAccountModalVisible}
+        onClose={() => setIsAccountModalVisible(false)}
       />
     </SafeAreaView>
   );
