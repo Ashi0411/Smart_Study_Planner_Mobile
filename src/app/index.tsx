@@ -14,14 +14,17 @@ import { StatCard } from '@/components/study/StatCard';
 import { TaskItem } from '@/components/study/TaskItem';
 import { ScheduleItem } from '@/components/study/ScheduleItem';
 import { WorkPlanCard } from '@/components/study/WorkPlanCard';
+import { CategoryCard } from '@/components/study/CategoryCard';
 import { ModalAddTask } from '@/components/study/ModalAddTask';
 import { ModalAddSchedule } from '@/components/study/ModalAddSchedule';
 import { ModalAddWorkPlan } from '@/components/study/ModalAddWorkPlan';
+import { ModalAddCategory } from '@/components/study/ModalAddCategory';
 
 export default function HomeScreen() {
   const router = useRouter();
 
   const {
+    categories,
     todaySchedule,
     tasks,
     workPlans,
@@ -29,7 +32,6 @@ export default function HomeScreen() {
     todayFocusMinutes,
     dailyGoalMinutes,
     pendingTasksCount,
-    subjects,
     themeMode,
     colors,
     toggleThemeMode,
@@ -38,6 +40,8 @@ export default function HomeScreen() {
   const [isTaskModalVisible, setIsTaskModalVisible] = useState(false);
   const [isScheduleModalVisible, setIsScheduleModalVisible] = useState(false);
   const [isWorkPlanModalVisible, setIsWorkPlanModalVisible] = useState(false);
+  const [isCategoryModalVisible, setIsCategoryModalVisible] = useState(false);
+  const [filterCategoryId, setFilterCategoryId] = useState<string | null>(null);
 
   // Today formatted
   const todayDate = new Date();
@@ -50,6 +54,11 @@ export default function HomeScreen() {
   // Calculate goal progress
   const progressPercent = Math.min(100, Math.round((todayFocusMinutes / dailyGoalMinutes) * 100));
 
+  // Filtered work plans if user tapped a category
+  const displayedWorkPlans = filterCategoryId
+    ? workPlans.filter((p) => p.categoryId === filterCategoryId)
+    : workPlans;
+
   // Urgent & high-priority tasks (top 3)
   const urgentTasks = tasks
     .filter((t) => !t.completed)
@@ -61,16 +70,18 @@ export default function HomeScreen() {
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         {/* Top Header */}
         <View style={styles.header}>
-          <View>
-            <Text style={[styles.dateText, { color: colors.textSecondary }]}>
-              {dateFormatted.toUpperCase()}
+          <View style={styles.brandingWrap}>
+            <Text style={[styles.appName, { color: colors.primary }]}>
+              SMART LIFE & LEARNING PLANNER
             </Text>
-            <Text style={[styles.greetingText, { color: colors.text }]}>Hello, Scholar 🎓</Text>
+            <Text style={[styles.greetingText, { color: colors.text }]}>Dashboard 🚀</Text>
+            <Text style={[styles.dateText, { color: colors.textSecondary }]}>
+              {dateFormatted} • All Goals in One Place
+            </Text>
           </View>
 
-          {/* Right Header Actions: Theme Toggle & Streak Badge */}
+          {/* Right Header Actions */}
           <View style={styles.headerActions}>
-            {/* Theme Toggle Button (Light/Dark) */}
             <Pressable
               onPress={toggleThemeMode}
               hitSlop={8}
@@ -85,7 +96,6 @@ export default function HomeScreen() {
               />
             </Pressable>
 
-            {/* Streak Badge */}
             <View
               style={[
                 styles.streakBadge,
@@ -97,7 +107,7 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* AI Work Plan Hero Banner */}
+        {/* AI Custom Work Plan Hero Banner */}
         <View
           style={[
             styles.aiHeroBanner,
@@ -107,39 +117,88 @@ export default function HomeScreen() {
             <View style={styles.aiPillRow}>
               <View style={[styles.aiPill, { backgroundColor: colors.primaryLight }]}>
                 <Ionicons name="sparkles" size={13} color={colors.primary} />
-                <Text style={[styles.aiPillText, { color: colors.primary }]}>AI STUDY BOT</Text>
+                <Text style={[styles.aiPillText, { color: colors.primary }]}>AI ASSISTANT</Text>
               </View>
               <Text style={[styles.aiHeroBadge, { color: colors.textSecondary }]}>
-                Smart Curriculum Breakdown
+                Custom Work Plan Manager
               </Text>
             </View>
 
             <Text style={[styles.aiHeroTitle, { color: colors.text }]}>
-              Create a Work Plan
+              Custom Work Plans & Sub-Plans
             </Text>
             <Text style={[styles.aiHeroSub, { color: colors.textSecondary }]}>
-              Enter any exam or assignment goal. The AI bot will break it down into structured sub-plans and milestones.
+              Create work plans for University, Cybersecurity, UI/UX, English, or Personal Goals. Generate phased sub-plans automatically with AI!
             </Text>
 
-            <Pressable
-              onPress={() => setIsWorkPlanModalVisible(true)}
-              style={[styles.aiActionBtn, { backgroundColor: colors.primary }]}>
-              <Ionicons name="add-circle" size={18} color="#FFF" />
-              <Text style={styles.aiActionBtnText}>+ Add Work Plan with AI</Text>
-            </Pressable>
+            <View style={styles.heroButtonsRow}>
+              <Pressable
+                onPress={() => setIsWorkPlanModalVisible(true)}
+                style={[styles.aiActionBtn, { backgroundColor: colors.primary }]}>
+                <Ionicons name="add-circle" size={17} color="#FFF" />
+                <Text style={styles.aiActionBtnText}>+ Add Work Plan</Text>
+              </Pressable>
+
+              <Pressable
+                onPress={() => setIsCategoryModalVisible(true)}
+                style={[styles.catActionBtn, { borderColor: colors.cardBorder, backgroundColor: colors.backgroundElement }]}>
+                <Ionicons name="folder-open-outline" size={16} color={colors.text} />
+                <Text style={[styles.catActionBtnText, { color: colors.text }]}>+ Category</Text>
+              </Pressable>
+            </View>
           </View>
         </View>
 
-        {/* Active Work Plans Section */}
-        {workPlans.length > 0 && (
-          <View style={styles.sectionWrap}>
-            <View style={styles.sectionHeader}>
-              <View>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>My Work Plans</Text>
-                <Text style={[styles.sectionSub, { color: colors.textSecondary }]}>
-                  {workPlans.length} active study plan{workPlans.length !== 1 ? 's' : ''}
-                </Text>
-              </View>
+        {/* Categories & Subcategories Section */}
+        <View style={styles.sectionWrap}>
+          <View style={styles.sectionHeader}>
+            <View>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Custom Categories</Text>
+              <Text style={[styles.sectionSub, { color: colors.textSecondary }]}>
+                {categories.length} categories • Manage subcategories & progress
+              </Text>
+            </View>
+
+            <Pressable
+              onPress={() => setIsCategoryModalVisible(true)}
+              style={({ pressed }) => [styles.sectionAddBtn, pressed && { opacity: 0.7 }]}>
+              <Ionicons name="add-circle-outline" size={18} color={colors.primary} />
+              <Text style={[styles.sectionAddText, { color: colors.primary }]}>Add Category</Text>
+            </Pressable>
+          </View>
+
+          {/* Categories Cards */}
+          {categories.map((cat) => (
+            <CategoryCard
+              key={cat.id}
+              category={cat}
+              onSelectCategory={(catId) =>
+                setFilterCategoryId(filterCategoryId === catId ? null : catId)
+              }
+            />
+          ))}
+        </View>
+
+        {/* Custom Work Plans Section */}
+        <View style={[styles.sectionWrap, { marginTop: 14 }]}>
+          <View style={styles.sectionHeader}>
+            <View>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                {filterCategoryId ? 'Filtered Work Plans' : 'All Work Plans'}
+              </Text>
+              <Text style={[styles.sectionSub, { color: colors.textSecondary }]}>
+                {displayedWorkPlans.length} active study & life plan{displayedWorkPlans.length !== 1 ? 's' : ''}
+              </Text>
+            </View>
+
+            <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+              {filterCategoryId && (
+                <Pressable
+                  onPress={() => setFilterCategoryId(null)}
+                  style={[styles.clearFilterBtn, { backgroundColor: colors.backgroundElement }]}>
+                  <Text style={[styles.clearFilterText, { color: colors.textSecondary }]}>Clear Filter</Text>
+                </Pressable>
+              )}
 
               <Pressable
                 onPress={() => setIsWorkPlanModalVisible(true)}
@@ -148,18 +207,30 @@ export default function HomeScreen() {
                 <Text style={[styles.sectionAddText, { color: colors.primary }]}>New Plan</Text>
               </Pressable>
             </View>
-
-            {workPlans.map((plan) => (
-              <WorkPlanCard key={plan.id} plan={plan} />
-            ))}
           </View>
-        )}
 
-        {/* Daily Goal Card */}
+          {displayedWorkPlans.length > 0 ? (
+            displayedWorkPlans.map((plan) => <WorkPlanCard key={plan.id} plan={plan} />)
+          ) : (
+            <View
+              style={[
+                styles.emptyCard,
+                { backgroundColor: colors.card, borderColor: colors.cardBorder },
+              ]}>
+              <Ionicons name="layers-outline" size={32} color={colors.primary} />
+              <Text style={[styles.emptyCardTitle, { color: colors.text }]}>No Work Plans Yet</Text>
+              <Text style={[styles.emptyCardText, { color: colors.textSecondary }]}>
+                Tap &ldquo;+ Add Work Plan&rdquo; above to set your goal and generate sub-plans with AI!
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Focus Goal & Quick Stats */}
         <View
           style={[
             styles.goalCard,
-            { backgroundColor: colors.card, borderColor: colors.cardBorder },
+            { backgroundColor: colors.card, borderColor: colors.cardBorder, marginTop: 14 },
           ]}>
           <View style={styles.goalHeader}>
             <View>
@@ -190,7 +261,6 @@ export default function HomeScreen() {
           </Text>
         </View>
 
-        {/* Quick Stats Grid */}
         <View style={styles.statsRow}>
           <StatCard
             icon="checkmark-circle-outline"
@@ -202,7 +272,7 @@ export default function HomeScreen() {
             icon="calendar-outline"
             iconColor={colors.primary}
             value={todaySchedule.length}
-            label="Classes Today"
+            label="Schedule Today"
           />
         </View>
 
@@ -233,15 +303,15 @@ export default function HomeScreen() {
             ]}>
             <Ionicons name="calendar-outline" size={32} color={colors.textSecondary} />
             <Text style={[styles.emptyCardText, { color: colors.textSecondary }]}>
-              No classes scheduled for today. Tap &ldquo;Add&rdquo; above to schedule a session.
+              No scheduled blocks for today. Tap &ldquo;Add&rdquo; to plan a session.
             </Text>
           </View>
         )}
 
-        {/* Urgent & Priority Tasks Section */}
-        <View style={[styles.sectionHeader, { marginTop: 24 }]}>
+        {/* Tasks Section */}
+        <View style={[styles.sectionHeader, { marginTop: 20 }]}>
           <View>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Tasks & Assignments</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Daily Tasks & Deadlines</Text>
             <Text style={[styles.sectionSub, { color: colors.textSecondary }]}>
               {tasks.length} total tasks
             </Text>
@@ -265,7 +335,7 @@ export default function HomeScreen() {
             ]}>
             <Ionicons name="checkbox-outline" size={32} color={colors.textSecondary} />
             <Text style={[styles.emptyCardText, { color: colors.textSecondary }]}>
-              No tasks added yet. Tap &ldquo;Add&rdquo; above or generate a work plan with sub-plans!
+              No tasks added yet. Tap &ldquo;Add&rdquo; or sync sub-plans from a Work Plan!
             </Text>
           </View>
         )}
@@ -279,36 +349,17 @@ export default function HomeScreen() {
             <Ionicons name="arrow-forward" size={16} color={colors.primary} />
           </Pressable>
         )}
-
-        {/* Subjects Carousel */}
-        <View style={[styles.sectionHeader, { marginTop: 24 }]}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Enrolled Subjects</Text>
-        </View>
-
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.subjectsHorizontal}>
-          {subjects.map((sub) => (
-            <View
-              key={sub.id}
-              style={[
-                styles.subjectCard,
-                { backgroundColor: colors.card, borderColor: colors.cardBorder },
-              ]}>
-              <View style={[styles.subjectIconWrap, { backgroundColor: sub.color + '1A' }]}>
-                <Ionicons name={(sub.icon as any) || 'book'} size={20} color={sub.color} />
-              </View>
-              <Text style={[styles.subjectCardCode, { color: sub.color }]}>{sub.code}</Text>
-              <Text numberOfLines={1} style={[styles.subjectCardName, { color: colors.text }]}>
-                {sub.name}
-              </Text>
-            </View>
-          ))}
-        </ScrollView>
       </ScrollView>
 
       {/* Modals */}
       <ModalAddWorkPlan
         visible={isWorkPlanModalVisible}
         onClose={() => setIsWorkPlanModalVisible(false)}
+        defaultCategoryId={filterCategoryId || undefined}
+      />
+      <ModalAddCategory
+        visible={isCategoryModalVisible}
+        onClose={() => setIsCategoryModalVisible(false)}
       />
       <ModalAddTask visible={isTaskModalVisible} onClose={() => setIsTaskModalVisible(false)} />
       <ModalAddSchedule
@@ -329,14 +380,17 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
-    marginBottom: 18,
+    marginBottom: 16,
   },
-  dateText: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.8,
+  brandingWrap: {
+    flex: 1,
+  },
+  appName: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1,
   },
   greetingText: {
     fontSize: 24,
@@ -344,10 +398,15 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
     marginTop: 2,
   },
+  dateText: {
+    fontSize: 12,
+    marginTop: 2,
+  },
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
+    marginTop: 4,
   },
   themeBtn: {
     width: 38,
@@ -377,7 +436,7 @@ const styles = StyleSheet.create({
     padding: 18,
     borderRadius: 20,
     borderWidth: 1,
-    marginBottom: 20,
+    marginBottom: 18,
     shadowColor: '#6366F1',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
@@ -418,22 +477,95 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 17,
   },
+  heroButtonsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 6,
+  },
   aiActionBtn: {
+    flex: 1.2,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: 6,
     paddingVertical: 12,
     borderRadius: 14,
-    marginTop: 4,
   },
   aiActionBtnText: {
     color: '#FFF',
-    fontSize: 14,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  catActionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  catActionBtnText: {
+    fontSize: 13,
     fontWeight: '700',
   },
   sectionWrap: {
-    marginBottom: 8,
+    marginBottom: 6,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+  },
+  sectionSub: {
+    fontSize: 12,
+    marginTop: 1,
+  },
+  sectionAddBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  sectionAddText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  clearFilterBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  clearFilterText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  emptyCard: {
+    padding: 24,
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginBottom: 10,
+  },
+  emptyCardTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    marginTop: 6,
+  },
+  emptyCardText: {
+    fontSize: 12,
+    textAlign: 'center',
+    lineHeight: 18,
   },
   goalCard: {
     padding: 16,
@@ -493,46 +625,6 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 20,
   },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    letterSpacing: -0.3,
-  },
-  sectionSub: {
-    fontSize: 12,
-    marginTop: 1,
-  },
-  sectionAddBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-  },
-  sectionAddText: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  emptyCard: {
-    padding: 20,
-    borderRadius: 14,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    marginBottom: 10,
-  },
-  emptyCardText: {
-    fontSize: 13,
-    textAlign: 'center',
-    lineHeight: 18,
-  },
   viewAllBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -547,33 +639,5 @@ const styles = StyleSheet.create({
   viewAllText: {
     fontSize: 13,
     fontWeight: '700',
-  },
-  subjectsHorizontal: {
-    flexDirection: 'row',
-    marginTop: 4,
-  },
-  subjectCard: {
-    width: 130,
-    padding: 12,
-    borderRadius: 16,
-    borderWidth: 1,
-    marginRight: 10,
-  },
-  subjectIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  subjectCardCode: {
-    fontSize: 10,
-    fontWeight: '700',
-    marginBottom: 2,
-  },
-  subjectCardName: {
-    fontSize: 13,
-    fontWeight: '600',
   },
 });

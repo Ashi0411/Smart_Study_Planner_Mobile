@@ -16,11 +16,15 @@ import { ModalAddTask } from '@/components/study/ModalAddTask';
 type FilterType = 'all' | 'pending' | 'completed' | 'high';
 
 export default function TasksScreen() {
-  const { tasks, subjects, colors } = useStudy();
+  const { tasks, categories, colors } = useStudy();
 
   const [activeFilter, setActiveFilter] = useState<FilterType>('pending');
-  const [selectedSubjectFilter, setSelectedSubjectFilter] = useState<string>('all');
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('all');
+  const [selectedSubcategoryFilter, setSelectedSubcategoryFilter] = useState<string>('all');
   const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
+
+  // Selected category object
+  const activeCategory = categories.find((c) => c.id === selectedCategoryFilter);
 
   // Filtering
   const filteredTasks = tasks.filter((t) => {
@@ -29,8 +33,16 @@ export default function TasksScreen() {
     if (activeFilter === 'completed' && !t.completed) return false;
     if (activeFilter === 'high' && t.priority !== 'high') return false;
 
-    // Subject filter
-    if (selectedSubjectFilter !== 'all' && t.subjectId !== selectedSubjectFilter) {
+    // Category filter
+    if (selectedCategoryFilter !== 'all' && t.categoryId !== selectedCategoryFilter) {
+      return false;
+    }
+
+    // Subcategory filter
+    if (
+      selectedSubcategoryFilter !== 'all' &&
+      t.subcategoryId !== selectedSubcategoryFilter
+    ) {
       return false;
     }
 
@@ -45,7 +57,7 @@ export default function TasksScreen() {
       {/* Top Header */}
       <View style={styles.header}>
         <View>
-          <Text style={[styles.title, { color: colors.text }]}>Study Tasks</Text>
+          <Text style={[styles.title, { color: colors.text }]}>Tasks & Goals</Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
             {pendingCount} pending • {completedCount} completed
           </Text>
@@ -88,57 +100,114 @@ export default function TasksScreen() {
         })}
       </View>
 
-      {/* Subject Filter Pills */}
+      {/* Category Filter Pills */}
       <View style={styles.subjectFilterWrap}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.subjectScroll}>
           <Pressable
-            onPress={() => setSelectedSubjectFilter('all')}
+            onPress={() => {
+              setSelectedCategoryFilter('all');
+              setSelectedSubcategoryFilter('all');
+            }}
             style={[
               styles.subPill,
               {
-                backgroundColor: selectedSubjectFilter === 'all' ? colors.primary : colors.card,
-                borderColor: selectedSubjectFilter === 'all' ? colors.primary : colors.cardBorder,
+                backgroundColor: selectedCategoryFilter === 'all' ? colors.primary : colors.card,
+                borderColor: selectedCategoryFilter === 'all' ? colors.primary : colors.cardBorder,
               },
             ]}>
             <Text
               style={[
                 styles.subPillText,
-                { color: selectedSubjectFilter === 'all' ? '#FFF' : colors.text },
+                { color: selectedCategoryFilter === 'all' ? '#FFF' : colors.text },
               ]}>
-              All Subjects
+              All Categories
             </Text>
           </Pressable>
 
-          {subjects.map((sub) => {
-            const isSelected = selectedSubjectFilter === sub.id;
+          {categories.map((cat) => {
+            const isSelected = selectedCategoryFilter === cat.id;
             return (
               <Pressable
-                key={sub.id}
-                onPress={() => setSelectedSubjectFilter(sub.id)}
+                key={cat.id}
+                onPress={() => {
+                  setSelectedCategoryFilter(cat.id);
+                  setSelectedSubcategoryFilter('all');
+                }}
                 style={[
                   styles.subPill,
                   {
-                    backgroundColor: isSelected ? sub.color : colors.card,
-                    borderColor: isSelected ? sub.color : colors.cardBorder,
+                    backgroundColor: isSelected ? cat.color : colors.card,
+                    borderColor: isSelected ? cat.color : colors.cardBorder,
                   },
                 ]}>
                 <Ionicons
-                  name={(sub.icon as any) || 'book'}
+                  name={(cat.icon as any) || 'folder'}
                   size={12}
-                  color={isSelected ? '#FFF' : sub.color}
+                  color={isSelected ? '#FFF' : cat.color}
                 />
                 <Text
                   style={[
                     styles.subPillText,
                     { color: isSelected ? '#FFF' : colors.text },
                   ]}>
-                  {sub.name}
+                  {cat.name}
                 </Text>
               </Pressable>
             );
           })}
         </ScrollView>
       </View>
+
+      {/* Subcategory Filter Pills (if active category selected and has subcategories) */}
+      {activeCategory && activeCategory.subcategories.length > 0 && (
+        <View style={[styles.subjectFilterWrap, { marginTop: -4 }]}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.subjectScroll}>
+            <Pressable
+              onPress={() => setSelectedSubcategoryFilter('all')}
+              style={[
+                styles.subPill,
+                {
+                  backgroundColor: selectedSubcategoryFilter === 'all' ? activeCategory.color : colors.card,
+                  borderColor: selectedSubcategoryFilter === 'all' ? activeCategory.color : colors.cardBorder,
+                  paddingVertical: 4,
+                },
+              ]}>
+              <Text
+                style={[
+                  styles.subPillText,
+                  { color: selectedSubcategoryFilter === 'all' ? '#FFF' : colors.text, fontSize: 11 },
+                ]}>
+                All Subcategories
+              </Text>
+            </Pressable>
+
+            {activeCategory.subcategories.map((sub) => {
+              const isSelected = selectedSubcategoryFilter === sub.id;
+              return (
+                <Pressable
+                  key={sub.id}
+                  onPress={() => setSelectedSubcategoryFilter(sub.id)}
+                  style={[
+                    styles.subPill,
+                    {
+                      backgroundColor: isSelected ? activeCategory.color : colors.card,
+                      borderColor: isSelected ? activeCategory.color : colors.cardBorder,
+                      paddingVertical: 4,
+                    },
+                  ]}>
+                  <Text
+                    style={[
+                      styles.subPillText,
+                      { color: isSelected ? '#FFF' : colors.text, fontSize: 11 },
+                    ]}>
+                    {sub.name}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </View>
+      )}
 
       {/* Task List */}
       <FlatList

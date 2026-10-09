@@ -3,20 +3,31 @@ import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { WorkPlan } from '@/types/study';
 import { useStudy } from '@/context/StudyContext';
-import { SubjectBadge } from './SubjectBadge';
+import { CategoryBadge } from './SubjectBadge';
 
 interface Props {
   plan: WorkPlan;
 }
 
 export const WorkPlanCard: React.FC<Props> = ({ plan }) => {
-  const { toggleSubPlan, deleteWorkPlan, applyWorkPlanToTasks, getSubjectById, colors } = useStudy();
+  const {
+    toggleSubPlan,
+    deleteWorkPlan,
+    applyWorkPlanToTasks,
+    getCategoryById,
+    getSubcategoryById,
+    getWorkPlanProgress,
+    colors,
+  } = useStudy();
+
   const [expanded, setExpanded] = useState<boolean>(true);
 
-  const subject = getSubjectById(plan.subjectId);
+  const category = getCategoryById(plan.categoryId);
+  const subcategory = getSubcategoryById(plan.categoryId, plan.subcategoryId);
+
   const totalSubPlans = plan.subPlans.length;
   const completedSubPlans = plan.subPlans.filter((sp) => sp.completed).length;
-  const progressPercent = totalSubPlans > 0 ? Math.round((completedSubPlans / totalSubPlans) * 100) : 0;
+  const progressPercent = getWorkPlanProgress(plan.id);
 
   return (
     <View
@@ -30,7 +41,13 @@ export const WorkPlanCard: React.FC<Props> = ({ plan }) => {
       {/* Top Header */}
       <View style={styles.cardHeader}>
         <View style={styles.headerLeft}>
-          {subject && <SubjectBadge subject={subject} size="sm" />}
+          {category && (
+            <CategoryBadge
+              category={category}
+              subcategoryName={subcategory?.name}
+              size="sm"
+            />
+          )}
           <Text style={[styles.title, { color: colors.text }]}>{plan.title}</Text>
         </View>
 
@@ -39,18 +56,20 @@ export const WorkPlanCard: React.FC<Props> = ({ plan }) => {
         </Pressable>
       </View>
 
-      {/* Target Deadline */}
+      {/* Target Deadline & Progress Percentage */}
       <View style={styles.metaRow}>
-        <View style={styles.deadlineWrap}>
-          <Ionicons name="flag-outline" size={12} color={colors.primary} />
+        <View style={styles.deadlineContainer}>
+          <Ionicons name="flag-outline" size={13} color={category?.color || colors.primary} />
           <Text style={[styles.deadlineText, { color: colors.textSecondary }]}>
             Target: {plan.targetDeadline}
           </Text>
         </View>
 
-        <Text style={[styles.progressNumber, { color: colors.primary }]}>
-          {completedSubPlans}/{totalSubPlans} Sub-plans ({progressPercent}%)
-        </Text>
+        <View style={[styles.percentageBadge, { backgroundColor: (category?.color || colors.primary) + '1A' }]}>
+          <Text style={[styles.percentageText, { color: category?.color || colors.primary }]}>
+            {completedSubPlans}/{totalSubPlans} done • {progressPercent}%
+          </Text>
+        </View>
       </View>
 
       {/* Progress Bar */}
@@ -58,12 +77,12 @@ export const WorkPlanCard: React.FC<Props> = ({ plan }) => {
         <View
           style={[
             styles.progressBarFill,
-            { width: `${progressPercent}%`, backgroundColor: colors.primary },
+            { width: `${progressPercent}%`, backgroundColor: category?.color || colors.primary },
           ]}
         />
       </View>
 
-      {/* Toggle Sub-plans button */}
+      {/* Actions row */}
       <View style={styles.actionsBar}>
         <Pressable onPress={() => setExpanded(!expanded)} style={styles.expandToggle}>
           <Text style={[styles.expandText, { color: colors.textSecondary }]}>
@@ -81,7 +100,7 @@ export const WorkPlanCard: React.FC<Props> = ({ plan }) => {
             onPress={() => applyWorkPlanToTasks(plan.id)}
             style={[styles.syncBtn, { backgroundColor: colors.primaryLight }]}>
             <Ionicons name="checkbox-outline" size={12} color={colors.primary} />
-            <Text style={[styles.syncBtnText, { color: colors.primary }]}>Sync to Tasks</Text>
+            <Text style={[styles.syncBtnText, { color: colors.primary }]}>Sync to Daily Tasks</Text>
           </Pressable>
         )}
       </View>
@@ -105,8 +124,12 @@ export const WorkPlanCard: React.FC<Props> = ({ plan }) => {
                 style={[
                   styles.checkbox,
                   {
-                    borderColor: sp.completed ? colors.primary : colors.textSecondary,
-                    backgroundColor: sp.completed ? colors.primary : 'transparent',
+                    borderColor: sp.completed
+                      ? category?.color || colors.primary
+                      : colors.textSecondary,
+                    backgroundColor: sp.completed
+                      ? category?.color || colors.primary
+                      : 'transparent',
                   },
                 ]}>
                 {sp.completed && <Ionicons name="checkmark" size={12} color="#FFF" />}
@@ -130,7 +153,7 @@ export const WorkPlanCard: React.FC<Props> = ({ plan }) => {
                 ) : null}
                 <View style={styles.subPlanMeta}>
                   <Text style={[styles.subPlanMins, { color: colors.textSecondary }]}>
-                    ⏱️ {sp.estimatedMinutes}m {sp.dueDate ? `• Due ${sp.dueDate}` : ''}
+                    ⏱️ {sp.estimatedMinutes}m {sp.dueDate ? `• Target: ${sp.dueDate}` : ''}
                   </Text>
                 </View>
               </View>
@@ -145,7 +168,7 @@ export const WorkPlanCard: React.FC<Props> = ({ plan }) => {
 const styles = StyleSheet.create({
   card: {
     padding: 16,
-    borderRadius: 18,
+    borderRadius: 20,
     borderWidth: 1,
     marginBottom: 14,
     shadowColor: '#000',
@@ -176,18 +199,23 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: 10,
-    marginBottom: 6,
+    marginBottom: 8,
   },
-  deadlineWrap: {
+  deadlineContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
   },
   deadlineText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '500',
   },
-  progressNumber: {
+  percentageBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  percentageText: {
     fontSize: 11,
     fontWeight: '700',
   },

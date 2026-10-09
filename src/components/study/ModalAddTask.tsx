@@ -20,12 +20,15 @@ interface Props {
 }
 
 export const ModalAddTask: React.FC<Props> = ({ visible, onClose }) => {
-  const { subjects, addTask, colors } = useStudy();
+  const { categories, addTask, colors } = useStudy();
 
   const [title, setTitle] = useState('');
-  const [selectedSubjectId, setSelectedSubjectId] = useState(subjects[0]?.id || '');
+  const [selectedCategoryId, setSelectedCategoryId] = useState(categories[0]?.id || '');
+  const [selectedSubcategoryId, setSelectedSubcategoryId] = useState<string | undefined>(undefined);
   const [priority, setPriority] = useState<Priority>('medium');
   const [estimatedMinutes, setEstimatedMinutes] = useState<number>(45);
+
+  const selectedCategory = categories.find((c) => c.id === selectedCategoryId) || categories[0];
 
   const [dateOptions] = useState(() => {
     const today = new Date();
@@ -47,12 +50,14 @@ export const ModalAddTask: React.FC<Props> = ({ visible, onClose }) => {
     if (!title.trim()) return;
     addTask({
       title: title.trim(),
-      subjectId: selectedSubjectId,
+      categoryId: selectedCategoryId,
+      subcategoryId: selectedSubcategoryId,
       dueDate,
       priority,
       estimatedMinutes,
     });
     setTitle('');
+    setSelectedSubcategoryId(undefined);
     onClose();
   };
 
@@ -64,7 +69,7 @@ export const ModalAddTask: React.FC<Props> = ({ visible, onClose }) => {
         <View style={[styles.container, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           {/* Header */}
           <View style={styles.header}>
-            <Text style={[styles.heading, { color: colors.text }]}>Add New Study Task</Text>
+            <Text style={[styles.heading, { color: colors.text }]}>Add New Task</Text>
             <Pressable onPress={onClose} hitSlop={8}>
               <Ionicons name="close-circle" size={24} color={colors.textSecondary} />
             </Pressable>
@@ -82,44 +87,79 @@ export const ModalAddTask: React.FC<Props> = ({ visible, onClose }) => {
                   borderColor: colors.cardBorder,
                 },
               ]}
-              placeholder="e.g. Finish Calculus Homework Chapter 4"
+              placeholder="e.g. Complete Lab Report, Draft Wireframes..."
               placeholderTextColor={colors.textSecondary}
               value={title}
               onChangeText={setTitle}
             />
 
-            {/* Subject Selector */}
-            <Text style={[styles.label, { color: colors.textSecondary }]}>SELECT SUBJECT</Text>
+            {/* Category Selector */}
+            <Text style={[styles.label, { color: colors.textSecondary }]}>SELECT CATEGORY</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalChips}>
-              {subjects.map((sub) => {
-                const isSelected = selectedSubjectId === sub.id;
+              {categories.map((cat) => {
+                const isSelected = selectedCategoryId === cat.id;
                 return (
                   <Pressable
-                    key={sub.id}
-                    onPress={() => setSelectedSubjectId(sub.id)}
+                    key={cat.id}
+                    onPress={() => {
+                      setSelectedCategoryId(cat.id);
+                      setSelectedSubcategoryId(undefined);
+                    }}
                     style={[
                       styles.chip,
                       {
-                        backgroundColor: isSelected ? sub.color : colors.backgroundElement,
-                        borderColor: isSelected ? sub.color : colors.cardBorder,
+                        backgroundColor: isSelected ? cat.color : colors.backgroundElement,
+                        borderColor: isSelected ? cat.color : colors.cardBorder,
                       },
                     ]}>
                     <Ionicons
-                      name={(sub.icon as any) || 'book'}
+                      name={(cat.icon as any) || 'folder'}
                       size={14}
-                      color={isSelected ? '#FFF' : sub.color}
+                      color={isSelected ? '#FFF' : cat.color}
                     />
                     <Text
                       style={[
                         styles.chipText,
                         { color: isSelected ? '#FFF' : colors.text, fontWeight: isSelected ? '700' : '500' },
                       ]}>
-                      {sub.name}
+                      {cat.name}
                     </Text>
                   </Pressable>
                 );
               })}
             </ScrollView>
+
+            {/* Subcategory Selector */}
+            {selectedCategory && selectedCategory.subcategories.length > 0 && (
+              <View style={{ marginTop: 4 }}>
+                <Text style={[styles.label, { color: colors.textSecondary }]}>SUBCATEGORY (OPTIONAL)</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalChips}>
+                  {selectedCategory.subcategories.map((sub) => {
+                    const isSelected = selectedSubcategoryId === sub.id;
+                    return (
+                      <Pressable
+                        key={sub.id}
+                        onPress={() => setSelectedSubcategoryId(isSelected ? undefined : sub.id)}
+                        style={[
+                          styles.chip,
+                          {
+                            backgroundColor: isSelected ? selectedCategory.color : colors.backgroundElement,
+                            borderColor: isSelected ? selectedCategory.color : colors.cardBorder,
+                          },
+                        ]}>
+                        <Text
+                          style={[
+                            styles.chipText,
+                            { color: isSelected ? '#FFF' : colors.text },
+                          ]}>
+                          {sub.name}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            )}
 
             {/* Priority */}
             <Text style={[styles.label, { color: colors.textSecondary }]}>PRIORITY</Text>

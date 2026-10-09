@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
-  Subject,
+  Category,
+  Subcategory,
   StudyTask,
   ScheduleSession,
   FocusLog,
@@ -11,25 +12,75 @@ import {
 import { Colors, ColorPalette } from '@/constants/theme';
 
 const STORAGE_KEYS = {
-  TASKS: '@study_planner_tasks_v2',
-  SCHEDULE: '@study_planner_schedule_v2',
-  SUBJECTS: '@study_planner_subjects_v2',
-  WORK_PLANS: '@study_planner_work_plans_v2',
-  FOCUS_LOGS: '@study_planner_focus_logs_v2',
-  STREAK: '@study_planner_streak_v2',
-  THEME_MODE: '@study_planner_theme_mode_v2',
+  CATEGORIES: '@smart_planner_categories_v3',
+  TASKS: '@smart_planner_tasks_v3',
+  SCHEDULE: '@smart_planner_schedule_v3',
+  WORK_PLANS: '@smart_planner_work_plans_v3',
+  FOCUS_LOGS: '@smart_planner_focus_logs_v3',
+  STREAK: '@smart_planner_streak_v3',
+  THEME_MODE: '@smart_planner_theme_mode_v3',
 };
 
-export const INITIAL_SUBJECTS: Subject[] = [
-  { id: 'sub-1', name: 'Mathematics', code: 'MATH', color: '#6366F1', icon: 'calculator' },
-  { id: 'sub-2', name: 'Computer Science', code: 'CS', color: '#0EA5E9', icon: 'code-slash' },
-  { id: 'sub-3', name: 'Physics', code: 'PHYS', color: '#8B5CF6', icon: 'planet' },
-  { id: 'sub-4', name: 'Chemistry', code: 'CHEM', color: '#EC4899', icon: 'flask' },
-  { id: 'sub-5', name: 'Literature', code: 'ENG', color: '#F59E0B', icon: 'book' },
+export const INITIAL_CATEGORIES: Category[] = [
+  {
+    id: 'cat-uni',
+    name: 'University',
+    color: '#6366F1',
+    icon: 'school-outline',
+    subcategories: [
+      { id: 'sub-uni-1', categoryId: 'cat-uni', name: 'Semester Exams' },
+      { id: 'sub-uni-2', categoryId: 'cat-uni', name: 'Assignments' },
+      { id: 'sub-uni-3', categoryId: 'cat-uni', name: 'Lectures & Labs' },
+    ],
+  },
+  {
+    id: 'cat-cyber',
+    name: 'Cybersecurity',
+    color: '#10B981',
+    icon: 'shield-checkmark-outline',
+    subcategories: [
+      { id: 'sub-cyb-1', categoryId: 'cat-cyber', name: 'Network Security' },
+      { id: 'sub-cyb-2', categoryId: 'cat-cyber', name: 'Penetration Testing' },
+      { id: 'sub-cyb-3', categoryId: 'cat-cyber', name: 'CTF & Labs' },
+    ],
+  },
+  {
+    id: 'cat-uiux',
+    name: 'UI/UX Design',
+    color: '#EC4899',
+    icon: 'color-palette-outline',
+    subcategories: [
+      { id: 'sub-ui-1', categoryId: 'cat-uiux', name: 'Figma Mastery' },
+      { id: 'sub-ui-2', categoryId: 'cat-uiux', name: 'Design Systems' },
+      { id: 'sub-ui-3', categoryId: 'cat-uiux', name: 'User Research' },
+    ],
+  },
+  {
+    id: 'cat-eng',
+    name: 'English',
+    color: '#F59E0B',
+    icon: 'language-outline',
+    subcategories: [
+      { id: 'sub-eng-1', categoryId: 'cat-eng', name: 'IELTS Preparation' },
+      { id: 'sub-eng-2', categoryId: 'cat-eng', name: 'Speaking Fluency' },
+      { id: 'sub-eng-3', categoryId: 'cat-eng', name: 'Vocabulary & Grammar' },
+    ],
+  },
+  {
+    id: 'cat-pers',
+    name: 'Personal Goals',
+    color: '#8B5CF6',
+    icon: 'fitness-outline',
+    subcategories: [
+      { id: 'sub-per-1', categoryId: 'cat-pers', name: 'Health & Fitness' },
+      { id: 'sub-per-2', categoryId: 'cat-pers', name: 'Book Reading' },
+      { id: 'sub-per-3', categoryId: 'cat-pers', name: 'Financial Discipline' },
+    ],
+  },
 ];
 
 interface StudyContextType {
-  subjects: Subject[];
+  categories: Category[];
   tasks: StudyTask[];
   schedule: ScheduleSession[];
   workPlans: WorkPlan[];
@@ -41,11 +92,23 @@ interface StudyContextType {
   themeMode: 'light' | 'dark';
   colors: ColorPalette;
   toggleThemeMode: () => void;
+  // Category operations
+  addCategory: (
+    data: { name: string; color: string; icon: string },
+    initialSubcategories?: string[]
+  ) => void;
+  deleteCategory: (categoryId: string) => void;
+  addSubcategory: (categoryId: string, name: string) => void;
+  deleteSubcategory: (categoryId: string, subcategoryId: string) => void;
+  getCategoryById: (categoryId?: string) => Category | undefined;
+  getSubcategoryById: (categoryId?: string, subcategoryId?: string) => Subcategory | undefined;
+  getCategoryProgress: (categoryId: string) => number;
   // Work Plans & Sub-plans
   addWorkPlan: (plan: Omit<WorkPlan, 'id' | 'createdAt'>) => void;
   toggleSubPlan: (planId: string, subPlanId: string) => void;
   deleteWorkPlan: (planId: string) => void;
   applyWorkPlanToTasks: (planId: string) => void;
+  getWorkPlanProgress: (planId: string) => number;
   // Tasks Actions
   addTask: (task: Omit<StudyTask, 'id' | 'completed'>) => void;
   toggleTask: (taskId: string) => void;
@@ -55,8 +118,7 @@ interface StudyContextType {
   toggleScheduleSession: (sessionId: string) => void;
   deleteScheduleSession: (sessionId: string) => void;
   // Focus Actions
-  logFocusSession: (durationMinutes: number, mode: FocusMode, subjectId?: string) => void;
-  getSubjectById: (subjectId?: string) => Subject | undefined;
+  logFocusSession: (durationMinutes: number, mode: FocusMode, categoryId?: string) => void;
   // Computed
   todayFocusMinutes: number;
   completedTasksToday: number;
@@ -68,8 +130,7 @@ interface StudyContextType {
 const StudyContext = createContext<StudyContextType | undefined>(undefined);
 
 export const StudyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [subjects, setSubjects] = useState<Subject[]>(INITIAL_SUBJECTS);
-  // No hardcoded work plans or tasks by default - user creates them or generates via AI
+  const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
   const [tasks, setTasks] = useState<StudyTask[]>([]);
   const [schedule, setSchedule] = useState<ScheduleSession[]>([]);
   const [workPlans, setWorkPlans] = useState<WorkPlan[]>([]);
@@ -84,7 +145,7 @@ export const StudyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     async function loadData() {
       try {
         const [
-          storedSubjects,
+          storedCategories,
           storedTasks,
           storedSchedule,
           storedWorkPlans,
@@ -92,7 +153,7 @@ export const StudyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           storedStreak,
           storedTheme,
         ] = await Promise.all([
-          AsyncStorage.getItem(STORAGE_KEYS.SUBJECTS),
+          AsyncStorage.getItem(STORAGE_KEYS.CATEGORIES),
           AsyncStorage.getItem(STORAGE_KEYS.TASKS),
           AsyncStorage.getItem(STORAGE_KEYS.SCHEDULE),
           AsyncStorage.getItem(STORAGE_KEYS.WORK_PLANS),
@@ -101,7 +162,7 @@ export const StudyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           AsyncStorage.getItem(STORAGE_KEYS.THEME_MODE),
         ]);
 
-        if (storedSubjects) setSubjects(JSON.parse(storedSubjects));
+        if (storedCategories) setCategories(JSON.parse(storedCategories));
         if (storedTasks) setTasks(JSON.parse(storedTasks));
         if (storedSchedule) setSchedule(JSON.parse(storedSchedule));
         if (storedWorkPlans) setWorkPlans(JSON.parse(storedWorkPlans));
@@ -130,7 +191,16 @@ export const StudyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  // Save changes
+  // Save changes to storage
+  const saveCategories = async (newCategories: Category[]) => {
+    setCategories(newCategories);
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(newCategories));
+    } catch (e) {
+      console.warn('Error saving categories', e);
+    }
+  };
+
   const saveTasks = async (newTasks: StudyTask[]) => {
     setTasks(newTasks);
     try {
@@ -167,7 +237,75 @@ export const StudyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  // Work Plans & Sub-plans Actions
+  // Category Operations
+  const addCategory = (
+    data: { name: string; color: string; icon: string },
+    initialSubcategories: string[] = []
+  ) => {
+    const newCatId = 'cat-' + Date.now().toString();
+    const subs: Subcategory[] = initialSubcategories.map((name, idx) => ({
+      id: `sub-${newCatId}-${idx}`,
+      categoryId: newCatId,
+      name,
+    }));
+
+    const newCategory: Category = {
+      id: newCatId,
+      name: data.name,
+      color: data.color,
+      icon: data.icon,
+      subcategories: subs,
+    };
+    saveCategories([...categories, newCategory]);
+  };
+
+  const deleteCategory = (categoryId: string) => {
+    saveCategories(categories.filter((c) => c.id !== categoryId));
+  };
+
+  const addSubcategory = (categoryId: string, name: string) => {
+    const updated = categories.map((cat) => {
+      if (cat.id === categoryId) {
+        const newSub: Subcategory = {
+          id: `sub-${categoryId}-${Date.now()}`,
+          categoryId,
+          name: name.trim(),
+        };
+        return {
+          ...cat,
+          subcategories: [...cat.subcategories, newSub],
+        };
+      }
+      return cat;
+    });
+    saveCategories(updated);
+  };
+
+  const deleteSubcategory = (categoryId: string, subcategoryId: string) => {
+    const updated = categories.map((cat) => {
+      if (cat.id === categoryId) {
+        return {
+          ...cat,
+          subcategories: cat.subcategories.filter((s) => s.id !== subcategoryId),
+        };
+      }
+      return cat;
+    });
+    saveCategories(updated);
+  };
+
+  const getCategoryById = (categoryId?: string) => {
+    if (!categoryId) return undefined;
+    return categories.find((c) => c.id === categoryId);
+  };
+
+  const getSubcategoryById = (categoryId?: string, subcategoryId?: string) => {
+    if (!categoryId || !subcategoryId) return undefined;
+    const cat = categories.find((c) => c.id === categoryId);
+    return cat?.subcategories.find((s) => s.id === subcategoryId);
+  };
+
+  // Work Plans & Sub-plans Operations
   const addWorkPlan = (planData: Omit<WorkPlan, 'id' | 'createdAt'>) => {
     const newPlan: WorkPlan = {
       ...planData,
@@ -196,7 +334,6 @@ export const StudyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     saveWorkPlans(workPlans.filter((p) => p.id !== planId));
   };
 
-  // Apply sub-plans from a Work Plan into actual Study Tasks
   const applyWorkPlanToTasks = (planId: string) => {
     const plan = workPlans.find((p) => p.id === planId);
     if (!plan) return;
@@ -206,7 +343,9 @@ export const StudyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       .map((sp, idx) => ({
         id: 'task-from-plan-' + Date.now() + '-' + idx,
         title: `${plan.title}: ${sp.title}`,
-        subjectId: plan.subjectId,
+        categoryId: plan.categoryId,
+        subcategoryId: plan.subcategoryId,
+        workPlanId: plan.id,
         dueDate: sp.dueDate || plan.targetDeadline,
         priority: 'high',
         completed: false,
@@ -216,6 +355,30 @@ export const StudyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (newTasksToAdd.length > 0) {
       saveTasks([...newTasksToAdd, ...tasks]);
     }
+  };
+
+  // Progress Calculations
+  const getWorkPlanProgress = (planId: string): number => {
+    const plan = workPlans.find((p) => p.id === planId);
+    if (!plan || plan.subPlans.length === 0) return 0;
+    const done = plan.subPlans.filter((sp) => sp.completed).length;
+    return Math.round((done / plan.subPlans.length) * 100);
+  };
+
+  const getCategoryProgress = (categoryId: string): number => {
+    const catTasks = tasks.filter((t) => t.categoryId === categoryId);
+    const catPlans = workPlans.filter((p) => p.categoryId === categoryId);
+
+    let totalItems = catTasks.length;
+    let completedItems = catTasks.filter((t) => t.completed).length;
+
+    catPlans.forEach((p) => {
+      totalItems += p.subPlans.length;
+      completedItems += p.subPlans.filter((sp) => sp.completed).length;
+    });
+
+    if (totalItems === 0) return 0;
+    return Math.round((completedItems / totalItems) * 100);
   };
 
   // Task Actions
@@ -267,20 +430,15 @@ export const StudyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   // Focus Actions
-  const logFocusSession = (durationMinutes: number, mode: FocusMode, subjectId?: string) => {
+  const logFocusSession = (durationMinutes: number, mode: FocusMode, categoryId?: string) => {
     const newLog: FocusLog = {
       id: 'focus-' + Date.now().toString(),
-      subjectId,
+      categoryId,
       mode,
       durationMinutes,
       timestamp: new Date().toISOString(),
     };
     saveFocusLogs([newLog, ...focusLogs]);
-  };
-
-  const getSubjectById = (subjectId?: string) => {
-    if (!subjectId) return undefined;
-    return subjects.find((s) => s.id === subjectId);
   };
 
   const clearAllData = async () => {
@@ -315,7 +473,7 @@ export const StudyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   return (
     <StudyContext.Provider
       value={{
-        subjects,
+        categories,
         tasks,
         schedule,
         workPlans,
@@ -326,10 +484,18 @@ export const StudyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         themeMode,
         colors: activeColors,
         toggleThemeMode,
+        addCategory,
+        deleteCategory,
+        addSubcategory,
+        deleteSubcategory,
+        getCategoryById,
+        getSubcategoryById,
+        getCategoryProgress,
         addWorkPlan,
         toggleSubPlan,
         deleteWorkPlan,
         applyWorkPlanToTasks,
+        getWorkPlanProgress,
         addTask,
         toggleTask,
         deleteTask,
@@ -337,7 +503,6 @@ export const StudyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         toggleScheduleSession,
         deleteScheduleSession,
         logFocusSession,
-        getSubjectById,
         todayFocusMinutes,
         completedTasksToday,
         pendingTasksCount,

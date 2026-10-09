@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Smart Study Planner",
-    "slug": "smart-study-planner",
+    "name": "Smart Life & Learning Planner",
+    "slug": "smart-life-planner",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",

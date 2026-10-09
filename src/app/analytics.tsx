@@ -19,7 +19,7 @@ const MAX_HOURS = 4.0;
 
 export default function AnalyticsScreen() {
   const {
-    subjects,
+    categories,
     tasks,
     focusLogs,
     streakDays,
@@ -144,27 +144,27 @@ export default function AnalyticsScreen() {
           </View>
         </View>
 
-        {/* Subject Breakdown */}
+        {/* Category Breakdown */}
         <View style={[styles.chartCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
-          <Text style={[styles.cardTitle, { color: colors.text }]}>Subject Time Distribution</Text>
-          <Text style={[styles.cardSub, { color: colors.textSecondary }]}>Focus allocation by subject</Text>
+          <Text style={[styles.cardTitle, { color: colors.text }]}>Category Time Distribution</Text>
+          <Text style={[styles.cardSub, { color: colors.textSecondary }]}>Focus allocation by category</Text>
 
           <View style={styles.subjectList}>
-            {subjects.map((sub, idx) => {
+            {categories.map((cat, idx) => {
               // Sample percentages
               const percent = [35, 25, 20, 12, 8][idx] || 10;
               return (
-                <View key={sub.id} style={styles.subjectRow}>
+                <View key={cat.id} style={styles.subjectRow}>
                   <View style={styles.subjectRowInfo}>
-                    <View style={[styles.colorDot, { backgroundColor: sub.color }]} />
-                    <Text style={[styles.subjectName, { color: colors.text }]}>{sub.name}</Text>
+                    <View style={[styles.colorDot, { backgroundColor: cat.color }]} />
+                    <Text style={[styles.subjectName, { color: colors.text }]}>{cat.name}</Text>
                     <Text style={[styles.subjectPercent, { color: colors.textSecondary }]}>{percent}%</Text>
                   </View>
                   <View style={[styles.progressTrack, { backgroundColor: colors.backgroundElement }]}>
                     <View
                       style={[
                         styles.progressFill,
-                        { width: `${percent}%`, backgroundColor: sub.color },
+                        { width: `${percent}%`, backgroundColor: cat.color },
                       ]}
                     />
                   </View>

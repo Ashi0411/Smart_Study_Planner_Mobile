@@ -11,8 +11,9 @@ interface Props {
 }
 
 export const TaskItem: React.FC<Props> = ({ task }) => {
-  const { toggleTask, deleteTask, getSubjectById, colors } = useStudy();
-  const subject = getSubjectById(task.subjectId);
+  const { toggleTask, deleteTask, getCategoryById, getSubcategoryById, colors } = useStudy();
+  const category = getCategoryById(task.categoryId);
+  const subcategory = getSubcategoryById(task.categoryId, task.subcategoryId);
 
   const todayStr = new Date().toISOString().split('T')[0];
   const isToday = task.dueDate === todayStr;
@@ -57,7 +58,13 @@ export const TaskItem: React.FC<Props> = ({ task }) => {
         </Text>
 
         <View style={styles.badgesRow}>
-          {subject && <SubjectBadge subject={subject} size="sm" />}
+          {category && (
+            <SubjectBadge
+              category={category}
+              subcategoryName={subcategory?.name}
+              size="sm"
+            />
+          )}
           <PriorityBadge priority={task.priority} />
 
           {/* Due date */}

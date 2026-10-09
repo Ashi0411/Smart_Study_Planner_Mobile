@@ -20,10 +20,10 @@ const MODE_DURATIONS: Record<FocusMode, number> = {
 };
 
 export default function FocusScreen() {
-  const { subjects, logFocusSession, todayFocusMinutes, colors } = useStudy();
+  const { categories, logFocusSession, todayFocusMinutes, colors } = useStudy();
 
   const [mode, setMode] = useState<FocusMode>('pomodoro');
-  const [selectedSubjectId, setSelectedSubjectId] = useState<string>(subjects[0]?.id || '');
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>(categories[0]?.id || '');
   const [timeLeft, setTimeLeft] = useState<number>(MODE_DURATIONS.pomodoro);
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [sessionsCompletedToday, setSessionsCompletedToday] = useState<number>(0);
@@ -40,19 +40,19 @@ export default function FocusScreen() {
 
   const handleSessionComplete = useCallback(() => {
     const durationMinutes = Math.floor(MODE_DURATIONS[mode] / 60);
-    logFocusSession(durationMinutes, mode, selectedSubjectId);
+    logFocusSession(durationMinutes, mode, selectedCategoryId);
     if (mode === 'pomodoro') {
       setSessionsCompletedToday((c) => c + 1);
       Alert.alert(
         '🎉 Focus Session Done!',
-        `Awesome work! You completed ${durationMinutes} minutes of focused study. Time for a well-deserved break!`
+        `Awesome work! You completed ${durationMinutes} minutes of focused work. Time for a well-deserved break!`
       );
       handleModeChange('short_break');
     } else {
-      Alert.alert('Break Finished', 'Ready to dive back into learning?');
+      Alert.alert('Break Finished', 'Ready to dive back into your goals?');
       handleModeChange('pomodoro');
     }
-  }, [mode, selectedSubjectId, logFocusSession, handleModeChange]);
+  }, [mode, selectedCategoryId, logFocusSession, handleModeChange]);
 
   // Timer tick
   useEffect(() => {
@@ -95,7 +95,7 @@ export default function FocusScreen() {
   const totalDuration = MODE_DURATIONS[mode];
   const progressPercent = Math.round(((totalDuration - timeLeft) / totalDuration) * 100);
 
-  const selectedSubject = subjects.find((s) => s.id === selectedSubjectId);
+  const selectedCategory = categories.find((c) => c.id === selectedCategoryId);
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
@@ -159,9 +159,9 @@ export default function FocusScreen() {
               </Text>
             </View>
 
-            {selectedSubject && (
+            {selectedCategory && (
               <View style={styles.timerSubject}>
-                <SubjectBadge subject={selectedSubject} size="sm" />
+                <SubjectBadge category={selectedCategory} size="sm" />
               </View>
             )}
           </View>
@@ -194,34 +194,34 @@ export default function FocusScreen() {
           </Pressable>
         </View>
 
-        {/* Subject Picker for Focus */}
+        {/* Category Picker for Focus */}
         <View style={styles.subjectSection}>
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>TAG STUDY SUBJECT</Text>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>TAG GOAL CATEGORY</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.subjectsRow}>
-            {subjects.map((sub) => {
-              const isSelected = selectedSubjectId === sub.id;
+            {categories.map((cat) => {
+              const isSelected = selectedCategoryId === cat.id;
               return (
                 <Pressable
-                  key={sub.id}
-                  onPress={() => setSelectedSubjectId(sub.id)}
+                  key={cat.id}
+                  onPress={() => setSelectedCategoryId(cat.id)}
                   style={[
                     styles.subjectChip,
                     {
-                      backgroundColor: isSelected ? sub.color : colors.card,
-                      borderColor: isSelected ? sub.color : colors.cardBorder,
+                      backgroundColor: isSelected ? cat.color : colors.card,
+                      borderColor: isSelected ? cat.color : colors.cardBorder,
                     },
                   ]}>
                   <Ionicons
-                    name={(sub.icon as any) || 'book'}
+                    name={(cat.icon as any) || 'folder'}
                     size={14}
-                    color={isSelected ? '#FFF' : sub.color}
+                    color={isSelected ? '#FFF' : cat.color}
                   />
                   <Text
                     style={[
                       styles.subjectChipText,
                       { color: isSelected ? '#FFF' : colors.text, fontWeight: isSelected ? '700' : '500' },
                     ]}>
-                    {sub.name}
+                    {cat.name}
                   </Text>
                 </Pressable>
               );

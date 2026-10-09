@@ -1,48 +1,87 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Subject } from '@/types/study';
+import { Category } from '@/types/study';
 
 interface Props {
-  subject?: Subject;
+  category?: Category | { name: string; color: string; icon: string };
+  subcategoryName?: string;
   size?: 'sm' | 'md';
 }
 
-export const SubjectBadge: React.FC<Props> = ({ subject, size = 'md' }) => {
-  if (!subject) return null;
+export const CategoryBadge: React.FC<Props> = ({ category, subcategoryName, size = 'md' }) => {
+  if (!category) return null;
 
   const isSmall = size === 'sm';
 
   return (
-    <View
-      style={[
-        styles.badge,
-        { backgroundColor: subject.color + '1A', borderColor: subject.color + '4D' },
-        isSmall && styles.badgeSmall,
-      ]}>
-      <Ionicons
-        name={(subject.icon as any) || 'book-outline'}
-        size={isSmall ? 11 : 13}
-        color={subject.color}
-      />
-      <Text
+    <View style={styles.row}>
+      <View
         style={[
-          styles.text,
-          { color: subject.color },
-          isSmall && styles.textSmall,
+          styles.badge,
+          { backgroundColor: category.color + '1A', borderColor: category.color + '4D' },
+          isSmall && styles.badgeSmall,
         ]}>
-        {subject.name}
-      </Text>
+        <Ionicons
+          name={(category.icon as any) || 'folder-outline'}
+          size={isSmall ? 11 : 13}
+          color={category.color}
+        />
+        <Text
+          style={[
+            styles.text,
+            { color: category.color },
+            isSmall && styles.textSmall,
+          ]}>
+          {category.name}
+        </Text>
+      </View>
+
+      {subcategoryName ? (
+        <View
+          style={[
+            styles.subBadge,
+            { backgroundColor: category.color + '12', borderColor: category.color + '33' },
+            isSmall && styles.badgeSmall,
+          ]}>
+          <Text
+            style={[
+              styles.subText,
+              { color: category.color },
+              isSmall && styles.textSmall,
+            ]}>
+            {subcategoryName}
+          </Text>
+        </View>
+      ) : null}
     </View>
   );
 };
 
+// Backwards compatibility alias
+export const SubjectBadge = CategoryBadge;
+
 const styles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    flexWrap: 'wrap',
+  },
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
     paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignSelf: 'flex-start',
+  },
+  subBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 7,
     paddingVertical: 3,
     borderRadius: 8,
     borderWidth: 1,
@@ -56,6 +95,10 @@ const styles = StyleSheet.create({
   },
   text: {
     fontSize: 12,
+    fontWeight: '700',
+  },
+  subText: {
+    fontSize: 11,
     fontWeight: '600',
   },
   textSmall: {

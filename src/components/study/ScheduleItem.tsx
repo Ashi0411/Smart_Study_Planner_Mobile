@@ -10,9 +10,10 @@ interface Props {
 }
 
 export const ScheduleItem: React.FC<Props> = ({ session }) => {
-  const { toggleScheduleSession, deleteScheduleSession, getSubjectById, colors } = useStudy();
-  const subject = getSubjectById(session.subjectId);
-  const accentColor = subject?.color || colors.primary;
+  const { toggleScheduleSession, deleteScheduleSession, getCategoryById, getSubcategoryById, colors } = useStudy();
+  const category = getCategoryById(session.categoryId);
+  const subcategory = getSubcategoryById(session.categoryId, session.subcategoryId);
+  const accentColor = category?.color || colors.primary;
 
   return (
     <View
@@ -36,7 +37,13 @@ export const ScheduleItem: React.FC<Props> = ({ session }) => {
       {/* Content */}
       <View style={styles.content}>
         <View style={styles.headerRow}>
-          {subject && <SubjectBadge subject={subject} size="sm" />}
+          {category && (
+            <SubjectBadge
+              category={category}
+              subcategoryName={subcategory?.name}
+              size="sm"
+            />
+          )}
         </View>
 
         <Text

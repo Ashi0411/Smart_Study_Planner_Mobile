@@ -19,13 +19,21 @@ import { generateAISubPlans } from '@/services/aiPlanGenerator';
 interface Props {
   visible: boolean;
   onClose: () => void;
+  defaultCategoryId?: string;
 }
 
-export const ModalAddWorkPlan: React.FC<Props> = ({ visible, onClose }) => {
-  const { subjects, addWorkPlan, addTask, colors } = useStudy();
+export const ModalAddWorkPlan: React.FC<Props> = ({
+  visible,
+  onClose,
+  defaultCategoryId,
+}) => {
+  const { categories, addWorkPlan, addTask, colors } = useStudy();
 
   const [title, setTitle] = useState('');
-  const [selectedSubjectId, setSelectedSubjectId] = useState(subjects[0]?.id || '');
+  const [selectedCategoryId, setSelectedCategoryId] = useState(
+    defaultCategoryId || categories[0]?.id || ''
+  );
+  const [selectedSubcategoryId, setSelectedSubcategoryId] = useState<string | undefined>(undefined);
   const [timeframeDays, setTimeframeDays] = useState<number>(7);
   const [intensity, setIntensity] = useState<'crash' | 'balanced' | 'light'>('balanced');
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
@@ -35,23 +43,31 @@ export const ModalAddWorkPlan: React.FC<Props> = ({ visible, onClose }) => {
   // Manual subplan input
   const [newSubPlanTitle, setNewSubPlanTitle] = useState('');
 
-  const selectedSubject = subjects.find((s) => s.id === selectedSubjectId) || subjects[0];
+  const selectedCategory = categories.find((c) => c.id === selectedCategoryId) || categories[0];
+  const selectedSubcategory = selectedCategory?.subcategories.find(
+    (s) => s.id === selectedSubcategoryId
+  );
+
+  const handleCategoryChange = (catId: string) => {
+    setSelectedCategoryId(catId);
+    setSelectedSubcategoryId(undefined); // reset subcategory on category change
+  };
 
   const handleGenerateAI = () => {
-    if (!title.trim()) return;
+    if (!title.trim() || !selectedCategory) return;
 
     setIsGenerating(true);
-    // Simulate smart AI bot thinking latency
     setTimeout(() => {
       const generated = generateAISubPlans({
         goalTitle: title.trim(),
-        subjectName: selectedSubject?.name || 'General Study',
+        categoryName: selectedCategory.name,
+        subcategoryName: selectedSubcategory?.name,
         timeframeDays,
         intensity,
       });
       setSubPlans(generated);
       setIsGenerating(false);
-    }, 700);
+    }, 600);
   };
 
   const handleAddManualSubPlan = () => {
@@ -84,7 +100,8 @@ export const ModalAddWorkPlan: React.FC<Props> = ({ visible, onClose }) => {
     // Save work plan
     addWorkPlan({
       title: title.trim(),
-      subjectId: selectedSubjectId,
+      categoryId: selectedCategoryId,
+      subcategoryId: selectedSubcategoryId,
       targetDeadline: deadlineStr,
       subPlans,
     });
@@ -94,7 +111,8 @@ export const ModalAddWorkPlan: React.FC<Props> = ({ visible, onClose }) => {
       subPlans.forEach((sp) => {
         addTask({
           title: `${title.trim()}: ${sp.title}`,
-          subjectId: selectedSubjectId,
+          categoryId: selectedCategoryId,
+          subcategoryId: selectedSubcategoryId,
           dueDate: sp.dueDate || deadlineStr,
           priority: 'high',
           estimatedMinutes: sp.estimatedMinutes,
@@ -102,9 +120,10 @@ export const ModalAddWorkPlan: React.FC<Props> = ({ visible, onClose }) => {
       });
     }
 
-    // Reset and close
+    // Reset & close
     setTitle('');
     setSubPlans([]);
+    setSelectedSubcategoryId(undefined);
     onClose();
   };
 
@@ -121,7 +140,7 @@ export const ModalAddWorkPlan: React.FC<Props> = ({ visible, onClose }) => {
                 <Ionicons name="sparkles" size={14} color={colors.primary} />
                 <Text style={[styles.aiBadgeText, { color: colors.primary }]}>AI ASSISTANT</Text>
               </View>
-              <Text style={[styles.heading, { color: colors.text }]}>Add Work Plan</Text>
+              <Text style={[styles.heading, { color: colors.text }]}>Add Custom Work Plan</Text>
             </View>
             <Pressable onPress={onClose} hitSlop={8}>
               <Ionicons name="close-circle" size={24} color={colors.textSecondary} />
@@ -130,7 +149,7 @@ export const ModalAddWorkPlan: React.FC<Props> = ({ visible, onClose }) => {
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollBody}>
             {/* Goal Title Input */}
-            <Text style={[styles.label, { color: colors.textSecondary }]}>PLAN GOAL / OBJECTIVE</Text>
+            <Text style={[styles.label, { color: colors.textSecondary }]}>WORK PLAN NAME / GOAL</Text>
             <TextInput
               style={[
                 styles.input,
@@ -140,86 +159,134 @@ export const ModalAddWorkPlan: React.FC<Props> = ({ visible, onClose }) => {
                   borderColor: colors.cardBorder,
                 },
               ]}
-              placeholder="e.g. Master Calculus Finals, Finish React App Project"
+              placeholder="e.g. Master Network Pentesting, University Sem 2 Exams, IELTS Prep"
               placeholderTextColor={colors.textSecondary}
               value={title}
               onChangeText={setTitle}
             />
 
-            {/* Subject Selector */}
-            <Text style={[styles.label, { color: colors.textSecondary }]}>TARGET SUBJECT</Text>
+            {/* Category Selector */}
+            <Text style={[styles.label, { color: colors.textSecondary }]}>SELECT CATEGORY</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalChips}>
-              {subjects.map((sub) => {
-                const isSelected = selectedSubjectId === sub.id;
+              {categories.map((cat) => {
+                const isSelected = selectedCategoryId === cat.id;
                 return (
                   <Pressable
-                    key={sub.id}
-                    onPress={() => setSelectedSubjectId(sub.id)}
+                    key={cat.id}
+                    onPress={() => handleCategoryChange(cat.id)}
                     style={[
                       styles.chip,
                       {
-                        backgroundColor: isSelected ? sub.color : colors.backgroundElement,
-                        borderColor: isSelected ? sub.color : colors.cardBorder,
+                        backgroundColor: isSelected ? cat.color : colors.backgroundElement,
+                        borderColor: isSelected ? cat.color : colors.cardBorder,
                       },
                     ]}>
                     <Ionicons
-                      name={(sub.icon as any) || 'book'}
+                      name={(cat.icon as any) || 'folder'}
                       size={14}
-                      color={isSelected ? '#FFF' : sub.color}
+                      color={isSelected ? '#FFF' : cat.color}
                     />
                     <Text
                       style={[
                         styles.chipText,
                         { color: isSelected ? '#FFF' : colors.text, fontWeight: isSelected ? '700' : '500' },
                       ]}>
-                      {sub.name}
+                      {cat.name}
                     </Text>
                   </Pressable>
                 );
               })}
             </ScrollView>
 
-            {/* Timeframe & Pace */}
-            <View style={styles.row}>
-              <View style={styles.flex1}>
-                <Text style={[styles.label, { color: colors.textSecondary }]}>TIMEFRAME</Text>
-                <View style={styles.pillGroup}>
-                  {[
-                    { label: '3 Days', days: 3 },
-                    { label: '1 Week', days: 7 },
-                    { label: '2 Weeks', days: 14 },
-                    { label: '1 Month', days: 30 },
-                  ].map((t) => (
-                    <Pressable
-                      key={t.label}
-                      onPress={() => setTimeframeDays(t.days)}
+            {/* Subcategories (if available for selected category) */}
+            {selectedCategory && selectedCategory.subcategories.length > 0 && (
+              <View style={styles.subCatSection}>
+                <Text style={[styles.label, { color: colors.textSecondary }]}>
+                  SUBCATEGORY (OPTIONAL)
+                </Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalChips}>
+                  <Pressable
+                    onPress={() => setSelectedSubcategoryId(undefined)}
+                    style={[
+                      styles.subPill,
+                      {
+                        backgroundColor: !selectedSubcategoryId ? selectedCategory.color : colors.backgroundElement,
+                        borderColor: !selectedSubcategoryId ? selectedCategory.color : colors.cardBorder,
+                      },
+                    ]}>
+                    <Text
                       style={[
-                        styles.timePill,
-                        {
-                          backgroundColor: timeframeDays === t.days ? colors.primary : colors.backgroundElement,
-                          borderColor: timeframeDays === t.days ? colors.primary : colors.cardBorder,
-                        },
+                        styles.subPillText,
+                        { color: !selectedSubcategoryId ? '#FFF' : colors.text },
                       ]}>
-                      <Text
+                      All / General
+                    </Text>
+                  </Pressable>
+
+                  {selectedCategory.subcategories.map((sub) => {
+                    const isSelected = selectedSubcategoryId === sub.id;
+                    return (
+                      <Pressable
+                        key={sub.id}
+                        onPress={() => setSelectedSubcategoryId(sub.id)}
                         style={[
-                          styles.timePillText,
-                          { color: timeframeDays === t.days ? '#FFF' : colors.text },
+                          styles.subPill,
+                          {
+                            backgroundColor: isSelected ? selectedCategory.color : colors.backgroundElement,
+                            borderColor: isSelected ? selectedCategory.color : colors.cardBorder,
+                          },
                         ]}>
-                        {t.label}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
+                        <Text
+                          style={[
+                            styles.subPillText,
+                            { color: isSelected ? '#FFF' : colors.text },
+                          ]}>
+                          {sub.name}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
               </View>
+            )}
+
+            {/* Timeframe */}
+            <Text style={[styles.label, { color: colors.textSecondary }]}>TIMEFRAME</Text>
+            <View style={styles.pillGroup}>
+              {[
+                { label: '3 Days', days: 3 },
+                { label: '1 Week', days: 7 },
+                { label: '2 Weeks', days: 14 },
+                { label: '1 Month', days: 30 },
+              ].map((t) => (
+                <Pressable
+                  key={t.label}
+                  onPress={() => setTimeframeDays(t.days)}
+                  style={[
+                    styles.timePill,
+                    {
+                      backgroundColor: timeframeDays === t.days ? colors.primary : colors.backgroundElement,
+                      borderColor: timeframeDays === t.days ? colors.primary : colors.cardBorder,
+                    },
+                  ]}>
+                  <Text
+                    style={[
+                      styles.timePillText,
+                      { color: timeframeDays === t.days ? '#FFF' : colors.text },
+                    ]}>
+                    {t.label}
+                  </Text>
+                </Pressable>
+              ))}
             </View>
 
-            {/* Pace Selector */}
+            {/* Study Intensity */}
             <Text style={[styles.label, { color: colors.textSecondary }]}>STUDY INTENSITY</Text>
             <View style={styles.pillGroup}>
               {[
                 { label: 'Crash Course 🔥', value: 'crash' },
-                { label: 'Balanced ⚖️', value: 'balanced' },
-                { label: 'Light Revision 🌿', value: 'light' },
+                { label: 'Balanced Pace ⚖️', value: 'balanced' },
+                { label: 'Light Routine 🌿', value: 'light' },
               ].map((p) => (
                 <Pressable
                   key={p.value}
@@ -259,7 +326,9 @@ export const ModalAddWorkPlan: React.FC<Props> = ({ visible, onClose }) => {
                 <Ionicons name="sparkles" size={18} color="#FFF" />
               )}
               <Text style={styles.aiGenBtnText}>
-                {isGenerating ? 'AI Bot is structuring sub-plans...' : 'Generate Sub-Plans with AI Bot'}
+                {isGenerating
+                  ? 'AI Bot generating structured sub-plans...'
+                  : '✨ Generate Sub-Plans with AI Bot'}
               </Text>
             </Pressable>
 
@@ -271,7 +340,7 @@ export const ModalAddWorkPlan: React.FC<Props> = ({ visible, onClose }) => {
                     Generated Sub-Plans ({subPlans.length})
                   </Text>
                   <Text style={[styles.subPlansHelper, { color: colors.textSecondary }]}>
-                    Milestones & study phases
+                    Milestones & phases
                   </Text>
                 </View>
 
@@ -283,7 +352,7 @@ export const ModalAddWorkPlan: React.FC<Props> = ({ visible, onClose }) => {
                       { backgroundColor: colors.backgroundElement, borderColor: colors.cardBorder },
                     ]}>
                     <View style={styles.subPlanHeader}>
-                      <View style={[styles.stepCircle, { backgroundColor: colors.primary }]}>
+                      <View style={[styles.stepCircle, { backgroundColor: selectedCategory?.color || colors.primary }]}>
                         <Text style={styles.stepNum}>{index + 1}</Text>
                       </View>
                       <Text style={[styles.subPlanTitle, { color: colors.text }]}>{sp.title}</Text>
@@ -320,7 +389,7 @@ export const ModalAddWorkPlan: React.FC<Props> = ({ visible, onClose }) => {
               </View>
             )}
 
-            {/* Manual Sub-plan adder */}
+            {/* Manual Sub-plan input */}
             <Text style={[styles.label, { color: colors.textSecondary, marginTop: 16 }]}>
               OR ADD CUSTOM SUB-PLAN
             </Text>
@@ -334,7 +403,7 @@ export const ModalAddWorkPlan: React.FC<Props> = ({ visible, onClose }) => {
                     borderColor: colors.cardBorder,
                   },
                 ]}
-                placeholder="e.g. Read chapters 3 & 4 summary"
+                placeholder="e.g. Complete chapter summary notes"
                 placeholderTextColor={colors.textSecondary}
                 value={newSubPlanTitle}
                 onChangeText={setNewSubPlanTitle}
@@ -387,7 +456,7 @@ export const ModalAddWorkPlan: React.FC<Props> = ({ visible, onClose }) => {
               disabled={!title.trim()}
               style={[
                 styles.btn,
-                { backgroundColor: title.trim() ? colors.primary : colors.cardBorder },
+                { backgroundColor: title.trim() ? selectedCategory?.color || colors.primary : colors.cardBorder },
               ]}>
               <Text style={[styles.btnText, { color: '#FFF' }]}>
                 Save Work Plan ({subPlans.length} sub-plans)
@@ -477,11 +546,19 @@ const styles = StyleSheet.create({
   chipText: {
     fontSize: 13,
   },
-  row: {
-    flexDirection: 'row',
+  subCatSection: {
+    marginTop: 6,
   },
-  flex1: {
-    flex: 1,
+  subPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginRight: 6,
+  },
+  subPillText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   pillGroup: {
     flexDirection: 'row',
