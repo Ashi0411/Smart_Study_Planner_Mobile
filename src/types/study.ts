@@ -41,11 +41,13 @@ export interface StudyTask {
   categoryId: string;
   subcategoryId?: string;
   workPlanId?: string;
-  dueDate: string; // ISO string or YYYY-MM-DD
+  dueDate: string; // ISO string or YYYY-MM-DD or formatted string
   priority: Priority;
   completed: boolean;
   completedAt?: string;
   estimatedMinutes?: number;
+  progressPercent?: number;
+  isToday?: boolean;
 }
 
 export interface ScheduleSession {

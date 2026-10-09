@@ -31,8 +31,8 @@ const COLOR_PRESETS = [
 
 const ICON_PRESETS: { label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
   { label: 'Uni', icon: 'school-outline' },
-  { label: 'Security', icon: 'shield-checkmark-outline' },
-  { label: 'Design', icon: 'color-palette-outline' },
+  { label: 'Work', icon: 'briefcase-outline' },
+  { label: 'Marketing', icon: 'megaphone-outline' },
   { label: 'Language', icon: 'language-outline' },
   { label: 'Personal', icon: 'fitness-outline' },
   { label: 'Code', icon: 'code-slash-outline' },
@@ -102,7 +102,7 @@ export const ModalAddCategory: React.FC<Props> = ({ visible, onClose }) => {
                   borderColor: colors.cardBorder,
                 },
               ]}
-              placeholder="e.g. University, Cybersecurity, UI/UX, Personal Goals"
+              placeholder="e.g. University, English, Personal Goals, Marketing"
               placeholderTextColor={colors.textSecondary}
               value={name}
               onChangeText={setName}

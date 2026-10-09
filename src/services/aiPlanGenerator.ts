@@ -20,60 +20,60 @@ export function generateAISubPlans(options: GenerateOptions): SubPlan[] {
 
   let phases: { title: string; desc: string; mins: number }[] = [];
 
-  if (lowerCat.includes('cyber') || lowerTitle.includes('cyber') || lowerTitle.includes('security') || lowerTitle.includes('hack')) {
+  if (lowerCat.includes('market') || lowerTitle.includes('marketing') || lowerTitle.includes('blog') || lowerTitle.includes('content') || lowerTitle.includes('social')) {
     phases = [
       {
-        title: `Core Fundamentals & Network Architecture for ${cleanTitle}`,
-        desc: `Review TCP/IP models, protocol inspection, ports, and foundational security controls.`,
+        title: `Market Research & Audience Definition for ${cleanTitle}`,
+        desc: `Analyze audience personas, competitor campaigns, search keywords, and target trends.`,
         mins: Math.round(baseMinutes * 1.0),
       },
       {
-        title: `Vulnerability Scanning & Reconnaissance Lab`,
-        desc: `Set up virtual lab (Kali/Linux), run Nmap/Wireshark scans, and discover open service vectors.`,
-        mins: Math.round(baseMinutes * 1.5),
-      },
-      {
-        title: `Exploitation Techniques & Hands-on CTF Challenges`,
-        desc: `Practice realistic vulnerabilities (OWASP Top 10, privilege escalation) on TryHackMe/HackTheBox.`,
-        mins: Math.round(baseMinutes * 1.8),
-      },
-      {
-        title: `Defense Remediation, Hardening & Patching`,
-        desc: `Implement mitigation strategies, configure firewall rules, and analyze defensive security logs.`,
+        title: `Content Strategy & Copywriting Outline`,
+        desc: `Draft content headlines, narrative angle, key selling points, and call-to-actions.`,
         mins: Math.round(baseMinutes * 1.2),
       },
       {
-        title: `Executive Documentation & Technical Security Report`,
-        desc: `Document findings, write remediation walkthrough, and synthesize learned concepts.`,
-        mins: Math.round(baseMinutes * 0.8),
+        title: `Asset Production & Creative Media Assembly`,
+        desc: `Produce high-quality creative assets, banners, copy variants, and landing page elements.`,
+        mins: Math.round(baseMinutes * 1.5),
+      },
+      {
+        title: `Campaign Distribution & Channel Scheduling`,
+        desc: `Schedule posts, configure email newsletters, and verify automated publishing pipelines.`,
+        mins: Math.round(baseMinutes * 1.1),
+      },
+      {
+        title: `Analytics Tracking & Conversion Review`,
+        desc: `Review reach, click-through rates, user feedback, and refine future campaign performance.`,
+        mins: Math.round(baseMinutes * 0.9),
       },
     ];
-  } else if (lowerCat.includes('ui') || lowerCat.includes('ux') || lowerCat.includes('design') || lowerTitle.includes('figma') || lowerTitle.includes('design')) {
+  } else if (lowerCat.includes('project') || lowerCat.includes('work') || lowerTitle.includes('work') || lowerTitle.includes('client') || lowerTitle.includes('meeting')) {
     phases = [
       {
-        title: `User Research, Personas & Problem Scoping`,
-        desc: `Analyze target user needs, interview data, competitive benchmarks, and design requirements.`,
+        title: `Project Scope & Requirement Gathering for ${cleanTitle}`,
+        desc: `Document deliverables, establish stakeholder communication, and align timelines.`,
         mins: Math.round(baseMinutes * 1.0),
       },
       {
-        title: `Information Architecture & Low-Fidelity Wireframes`,
-        desc: `Draft user journey flows, rough sketches, and grayscale layouts before visual styling.`,
+        title: `Core Architecture & Milestone Planning`,
+        desc: `Break work into achievable sprint increments and set up required collaboration tools.`,
+        mins: Math.round(baseMinutes * 1.2),
+      },
+      {
+        title: `Execution & Production Sprint`,
+        desc: `Focus on delivering primary work milestones, solving blockers, and integrating feedback.`,
+        mins: Math.round(baseMinutes * 1.8),
+      },
+      {
+        title: `Review, Quality Check & Client Sync`,
+        desc: `Validate deliverables against requirements, rehearse presentations, and verify deliverables.`,
         mins: Math.round(baseMinutes * 1.3),
       },
       {
-        title: `Design System Tokens & High-Fidelity UI Components`,
-        desc: `Build typography scale, color variables, autolayout components, and accessibility contrast standards.`,
-        mins: Math.round(baseMinutes * 1.6),
-      },
-      {
-        title: `Interactive Prototyping & Micro-Animations`,
-        desc: `Connect component variants with smart animate, screen transitions, and realistic user flows.`,
-        mins: Math.round(baseMinutes * 1.4),
-      },
-      {
-        title: `Usability Testing & Design System Handoff`,
-        desc: `Run usability testing sessions, collect feedback, iterate screens, and prepare developer specs.`,
-        mins: Math.round(baseMinutes * 1.0),
+        title: `Final Sign-off & Delivery Wrap-up`,
+        desc: `Present completed outcomes, record action items, and archive project notes.`,
+        mins: Math.round(baseMinutes * 0.8),
       },
     ];
   } else if (lowerCat.includes('english') || lowerCat.includes('language') || lowerTitle.includes('ielts') || lowerTitle.includes('english')) {
