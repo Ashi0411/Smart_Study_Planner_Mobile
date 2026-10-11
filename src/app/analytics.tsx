@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -13,36 +13,143 @@ import { useStudy } from '@/context/StudyContext';
 
 type TimeRange = 'Day' | 'Week' | 'Month' | 'All Time';
 
-interface DayStat {
-  day: string;
-  hours: number;
-  isPeak?: boolean;
-}
-
-const WEEK_DATA: DayStat[] = [
-  { day: 'Sun', hours: 1.0 },
-  { day: 'Mon', hours: 1.5 },
-  { day: 'Tue', hours: 2.2 },
-  { day: 'Wed', hours: 2.0 },
-  { day: 'Thu', hours: 2.5, isPeak: true },
-  { day: 'Fri', hours: 3.2 },
-  { day: 'Sat', hours: 3.5 },
-];
+const DAYS_OF_WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export default function AnalyticsScreen() {
   const router = useRouter();
-  const { streakDays, themeMode } = useStudy();
+  const { streakDays, themeMode, focusLogs, categories, tasks } = useStudy();
   const isDark = themeMode === 'dark';
 
   const [selectedRange, setSelectedRange] = useState<TimeRange>('Week');
-  const [activeTooltipDay, setActiveTooltipDay] = useState<string>('Thu');
 
-  const selectedDayData = WEEK_DATA.find((d) => d.day === activeTooltipDay) || WEEK_DATA[4];
+  const todayDayName = DAYS_OF_WEEK[new Date().getDay()];
+  const [activeTooltipDay, setActiveTooltipDay] = useState<string>(todayDayName);
+
+  // Filter logs & compute dynamic stats based on selected time range
+  const rangeStats = useMemo(() => {
+    const now = new Date();
+    let filtered = focusLogs;
+
+    if (selectedRange === 'Day') {
+      const todayStr = now.toISOString().split('T')[0];
+      filtered = focusLogs.filter((l) => l.timestamp && l.timestamp.startsWith(todayStr));
+    } else if (selectedRange === 'Week') {
+      const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      filtered = focusLogs.filter((l) => l.timestamp && new Date(l.timestamp) >= oneWeekAgo);
+    } else if (selectedRange === 'Month') {
+      const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      filtered = focusLogs.filter((l) => l.timestamp && new Date(l.timestamp) >= oneMonthAgo);
+    }
+
+    const totalMinutes = filtered.reduce((acc, l) => acc + (l.durationMinutes || 0), 0);
+    const hours = Math.floor(totalMinutes / 60);
+    const mins = totalMinutes % 60;
+    const formattedStudyTime =
+      hours > 0 ? `${hours}h ${mins > 0 ? `${mins}m` : ''}`.trim() : `${mins}m`;
+
+    const sessionsCount = filtered.length;
+
+    // Focus score computed from task completion rate or focus habit
+    const completedTasks = tasks.filter((t) => t.completed).length;
+    const focusScore =
+      tasks.length > 0
+        ? Math.round((completedTasks / tasks.length) * 100)
+        : sessionsCount > 0
+        ? Math.min(100, sessionsCount * 25)
+        : 0;
+
+    // Subject breakdown from user's actual categories
+    const categoryMinutesMap: Record<string, number> = {};
+    filtered.forEach((log) => {
+      const catId = log.categoryId || 'cat-general';
+      categoryMinutesMap[catId] = (categoryMinutesMap[catId] || 0) + log.durationMinutes;
+    });
+
+    const categoryBreakdown = Object.entries(categoryMinutesMap)
+      .map(([catId, minutes]) => {
+        const cat = categories.find((c) => c.id === catId);
+        const cH = Math.floor(minutes / 60);
+        const cM = minutes % 60;
+        const formatted =
+          cH > 0 ? `${cH}h ${cM > 0 ? `${cM}m` : ''}`.trim() : `${cM}m`;
+        return {
+          id: catId,
+          name: cat?.name || 'General',
+          color: cat?.color || '#8B5CF6',
+          minutes,
+          formatted,
+          percentage: totalMinutes > 0 ? Math.round((minutes / totalMinutes) * 100) : 0,
+        };
+      })
+      .sort((a, b) => b.minutes - a.minutes);
+
+    return {
+      totalMinutes,
+      formattedStudyTime,
+      sessionsCount,
+      focusScore,
+      categoryBreakdown,
+    };
+  }, [focusLogs, selectedRange, tasks, categories]);
+
+  // Compute actual week study hours for Sun - Sat chart
+  const weekData = useMemo(() => {
+    const now = new Date();
+    const currentDayOfWeek = now.getDay();
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - currentDayOfWeek);
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    const dayHoursMap: Record<string, number> = {
+      Sun: 0,
+      Mon: 0,
+      Tue: 0,
+      Wed: 0,
+      Thu: 0,
+      Fri: 0,
+      Sat: 0,
+    };
+
+    focusLogs.forEach((log) => {
+      if (!log.timestamp) return;
+      const logDate = new Date(log.timestamp);
+      if (logDate >= startOfWeek) {
+        const dayName = DAYS_OF_WEEK[logDate.getDay()];
+        if (dayName) {
+          dayHoursMap[dayName] =
+            (dayHoursMap[dayName] || 0) + (log.durationMinutes || 0) / 60;
+        }
+      }
+    });
+
+    const maxHours = Math.max(...Object.values(dayHoursMap), 0);
+
+    return DAYS_OF_WEEK.map((day) => ({
+      day,
+      hours: Number((dayHoursMap[day] || 0).toFixed(1)),
+      isPeak: maxHours > 0 && dayHoursMap[day] === maxHours,
+    }));
+  }, [focusLogs]);
+
+  const selectedDayData =
+    weekData.find((d) => d.day === activeTooltipDay) ||
+    weekData.find((d) => d.day === todayDayName) ||
+    weekData[0];
+
+  const maxDayHours = Math.max(...weekData.map((d) => d.hours), 1);
+  const yMax = maxDayHours > 4 ? Math.ceil(maxDayHours) : 4.0;
+  const yAxisLabels = [
+    yMax.toFixed(1),
+    (yMax * 0.75).toFixed(1),
+    (yMax * 0.5).toFixed(1),
+    (yMax * 0.25).toFixed(1),
+    '0.0',
+  ];
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC' }]}>
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-        {/* Top Header matching reference Screen 3 */}
+        {/* Top Header */}
         <View style={styles.header}>
           <Pressable
             onPress={() => router.back()}
@@ -113,7 +220,7 @@ export default function AnalyticsScreen() {
           })}
         </View>
 
-        {/* 4 Stat Metric Cards (Horizontal Grid matching Screen 3) */}
+        {/* 4 Stat Metric Cards (Dynamic & Real-time) */}
         <View style={styles.metricGrid}>
           {/* Card 1: Study Time */}
           <View
@@ -128,10 +235,12 @@ export default function AnalyticsScreen() {
               <View style={[styles.metricIconWrap, { backgroundColor: '#EDE9FE' }]}>
                 <Ionicons name="locate-outline" size={14} color="#6366F1" />
               </View>
-              <Text style={styles.badgePurpleText}>16%</Text>
+              {rangeStats.totalMinutes > 0 && (
+                <Text style={styles.badgePurpleText}>Active</Text>
+              )}
             </View>
             <Text style={[styles.metricValue, { color: isDark ? '#FFF' : '#0F172A' }]}>
-              12h 45m
+              {rangeStats.formattedStudyTime}
             </Text>
             <Text style={[styles.metricLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>
               Study Time
@@ -151,10 +260,12 @@ export default function AnalyticsScreen() {
               <View style={[styles.metricIconWrap, { backgroundColor: '#E0F2FE' }]}>
                 <Ionicons name="hourglass-outline" size={14} color="#0284C7" />
               </View>
-              <Text style={styles.badgeBlueText}>12%</Text>
+              {rangeStats.sessionsCount > 0 && (
+                <Text style={styles.badgeBlueText}>{rangeStats.sessionsCount}</Text>
+              )}
             </View>
             <Text style={[styles.metricValue, { color: isDark ? '#FFF' : '#0F172A' }]}>
-              18
+              {rangeStats.sessionsCount}
             </Text>
             <Text style={[styles.metricLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>
               Sessions
@@ -174,10 +285,12 @@ export default function AnalyticsScreen() {
               <View style={[styles.metricIconWrap, { backgroundColor: '#DCFCE7' }]}>
                 <Ionicons name="trending-up-outline" size={14} color="#10B981" />
               </View>
-              <Text style={styles.badgeGreenText}>15%</Text>
+              {rangeStats.focusScore > 0 && (
+                <Text style={styles.badgeGreenText}>{rangeStats.focusScore}%</Text>
+              )}
             </View>
             <Text style={[styles.metricValue, { color: isDark ? '#FFF' : '#0F172A' }]}>
-              86
+              {rangeStats.focusScore}
             </Text>
             <Text style={[styles.metricLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>
               Focus Score
@@ -197,10 +310,10 @@ export default function AnalyticsScreen() {
               <View style={[styles.metricIconWrap, { backgroundColor: '#FEF3C7' }]}>
                 <Ionicons name="flame-outline" size={14} color="#D97706" />
               </View>
-              <View style={styles.streakDot} />
+              {streakDays > 0 && <View style={styles.streakDot} />}
             </View>
             <Text style={[styles.metricValue, { color: isDark ? '#FFF' : '#0F172A' }]}>
-              {streakDays > 0 ? streakDays : 7}
+              {streakDays}
             </Text>
             <Text style={[styles.metricLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>
               Streak
@@ -208,7 +321,7 @@ export default function AnalyticsScreen() {
           </View>
         </View>
 
-        {/* Card: Study Time (Hours) with interactive Line Chart */}
+        {/* Card: Study Time (Hours) with interactive Line & Bar Chart */}
         <View
           style={[
             styles.chartSectionCard,
@@ -231,7 +344,9 @@ export default function AnalyticsScreen() {
           {/* Tooltip Bubble at active day */}
           <View style={styles.tooltipRow}>
             <View style={styles.tooltipPill}>
-              <Text style={styles.tooltipText}>{selectedDayData.hours} Hours</Text>
+              <Text style={styles.tooltipText}>
+                {selectedDayData.day}: {selectedDayData.hours} Hours
+              </Text>
             </View>
           </View>
 
@@ -239,9 +354,9 @@ export default function AnalyticsScreen() {
           <View style={styles.chartContainer}>
             {/* Left Y-Axis */}
             <View style={styles.yAxisLabels}>
-              {['4.0', '3.0', '2.0', '1.0', '0.0'].map((label) => (
+              {yAxisLabels.map((label, idx) => (
                 <Text
-                  key={label}
+                  key={idx}
                   style={[styles.yAxisText, { color: isDark ? '#64748B' : '#94A3B8' }]}>
                   {label}
                 </Text>
@@ -265,9 +380,10 @@ export default function AnalyticsScreen() {
 
               {/* Day Bars */}
               <View style={styles.barsRow}>
-                {WEEK_DATA.map((item) => {
+                {weekData.map((item) => {
                   const isActive = activeTooltipDay === item.day;
-                  const barHeightPercent = Math.min(100, Math.round((item.hours / 4.0) * 100));
+                  const barHeightPercent =
+                    yMax > 0 ? Math.min(100, Math.round((item.hours / yMax) * 100)) : 0;
 
                   return (
                     <Pressable
@@ -281,8 +397,14 @@ export default function AnalyticsScreen() {
                           style={[
                             styles.chartDot,
                             {
-                              bottom: `${barHeightPercent}%`,
-                              backgroundColor: isActive ? '#6366F1' : '#A5B4FC',
+                              bottom: `${Math.max(2, barHeightPercent)}%`,
+                              backgroundColor: isActive
+                                ? '#6366F1'
+                                : item.hours > 0
+                                ? '#A5B4FC'
+                                : isDark
+                                ? '#334155'
+                                : '#CBD5E1',
                               borderColor: '#FFFFFF',
                             },
                           ]}
@@ -292,10 +414,12 @@ export default function AnalyticsScreen() {
                           style={[
                             styles.barColumn,
                             {
-                              height: `${barHeightPercent}%`,
+                              height: `${Math.max(4, barHeightPercent)}%`,
                               backgroundColor: isActive
-                                ? 'rgba(99, 102, 241, 0.28)'
-                                : 'rgba(99, 102, 241, 0.08)',
+                                ? 'rgba(99, 102, 241, 0.35)'
+                                : item.hours > 0
+                                ? 'rgba(99, 102, 241, 0.15)'
+                                : 'transparent',
                             },
                           ]}
                         />
@@ -324,7 +448,7 @@ export default function AnalyticsScreen() {
           </View>
         </View>
 
-        {/* Card: Subject Breakdown with Donut Gauge & Legend */}
+        {/* Card: Subject Breakdown with Dynamic Categories or Empty State */}
         <View
           style={[
             styles.chartSectionCard,
@@ -347,14 +471,22 @@ export default function AnalyticsScreen() {
 
           {/* Donut Gauge Ring */}
           <View style={styles.donutContainer}>
-            <View style={styles.donutOuterRing}>
+            <View
+              style={[
+                styles.donutOuterRing,
+                rangeStats.totalMinutes === 0 && {
+                  borderColor: isDark ? '#334155' : '#E2E8F0',
+                  borderTopColor: isDark ? '#334155' : '#E2E8F0',
+                  borderRightColor: isDark ? '#334155' : '#E2E8F0',
+                },
+              ]}>
               <View
                 style={[
                   styles.donutInnerCircle,
                   { backgroundColor: isDark ? '#1E293B' : '#FFFFFF' },
                 ]}>
                 <Text style={[styles.donutTotalValue, { color: isDark ? '#FFFFFF' : '#0F172A' }]}>
-                  12h 45m
+                  {rangeStats.formattedStudyTime}
                 </Text>
                 <Text style={[styles.donutTotalLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>
                   Total
@@ -363,47 +495,44 @@ export default function AnalyticsScreen() {
             </View>
           </View>
 
-          {/* 3-Column Legend Row */}
-          <View style={styles.legendRow}>
-            {/* Column 1: Structures */}
-            <View style={styles.legendCol}>
-              <View style={[styles.legendBarIndicator, { backgroundColor: '#6366F1' }]} />
-              <View>
-                <Text style={[styles.legendName, { color: isDark ? '#94A3B8' : '#64748B' }]}>
-                  Structures
-                </Text>
-                <Text style={[styles.legendHours, { color: isDark ? '#FFFFFF' : '#0F172A' }]}>
-                  4h 30m
-                </Text>
-              </View>
+          {/* Dynamic Subject List or Empty State */}
+          {rangeStats.categoryBreakdown.length > 0 ? (
+            <View style={styles.legendRow}>
+              {rangeStats.categoryBreakdown.slice(0, 3).map((item) => (
+                <View key={item.id} style={styles.legendCol}>
+                  <View style={[styles.legendBarIndicator, { backgroundColor: item.color }]} />
+                  <View>
+                    <Text
+                      style={[styles.legendName, { color: isDark ? '#94A3B8' : '#64748B' }]}
+                      numberOfLines={1}>
+                      {item.name}
+                    </Text>
+                    <Text style={[styles.legendHours, { color: isDark ? '#FFFFFF' : '#0F172A' }]}>
+                      {item.formatted}
+                    </Text>
+                  </View>
+                </View>
+              ))}
             </View>
-
-            {/* Column 2: Discrete */}
-            <View style={styles.legendCol}>
-              <View style={[styles.legendBarIndicator, { backgroundColor: '#EC4899' }]} />
-              <View>
-                <Text style={[styles.legendName, { color: isDark ? '#94A3B8' : '#64748B' }]}>
-                  Discrete
-                </Text>
-                <Text style={[styles.legendHours, { color: isDark ? '#FFFFFF' : '#0F172A' }]}>
-                  3h 00m
-                </Text>
+          ) : (
+            <View style={styles.emptySubjectContainer}>
+              <View style={styles.emptySubjectIconCircle}>
+                <Ionicons name="pie-chart-outline" size={24} color="#8B5CF6" />
               </View>
+              <Text style={[styles.emptySubjectTitle, { color: isDark ? '#FFFFFF' : '#0F172A' }]}>
+                No Subject Activity Yet
+              </Text>
+              <Text style={[styles.emptySubjectSub, { color: isDark ? '#94A3B8' : '#64748B' }]}>
+                Complete focus timer sessions or university tasks to view your real-time subject distribution.
+              </Text>
+              <Pressable
+                onPress={() => router.push('/focus')}
+                style={styles.startFocusBtn}>
+                <Ionicons name="timer-outline" size={15} color="#FFFFFF" />
+                <Text style={styles.startFocusBtnText}>Start Focus Session</Text>
+              </Pressable>
             </View>
-
-            {/* Column 3: Solving */}
-            <View style={styles.legendCol}>
-              <View style={[styles.legendBarIndicator, { backgroundColor: '#10B981' }]} />
-              <View>
-                <Text style={[styles.legendName, { color: isDark ? '#94A3B8' : '#64748B' }]}>
-                  Solving
-                </Text>
-                <Text style={[styles.legendHours, { color: isDark ? '#FFFFFF' : '#0F172A' }]}>
-                  2h 45m
-                </Text>
-              </View>
-            </View>
-          </View>
+          )}
         </View>
 
         <View style={{ height: 60 }} />
@@ -690,6 +819,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flex: 1,
+    justifyContent: 'center',
   },
   legendBarIndicator: {
     width: 4,
@@ -704,5 +835,45 @@ const styles = StyleSheet.create({
   legendHours: {
     fontSize: 13,
     fontWeight: '800',
+  },
+  emptySubjectContainer: {
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+  },
+  emptySubjectIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#EDE9FE',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  emptySubjectTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  emptySubjectSub: {
+    fontSize: 12.5,
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: 14,
+    paddingHorizontal: 16,
+  },
+  startFocusBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#8B5CF6',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 18,
+  },
+  startFocusBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12.5,
+    fontWeight: '700',
   },
 });
