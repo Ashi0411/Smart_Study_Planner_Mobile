@@ -104,7 +104,14 @@ export function generateAISubPlans(options: GenerateOptions): SubPlan[] {
         mins: Math.round(baseMinutes * 1.1),
       },
     ];
-  } else if (lowerCat.includes('university') || lowerCat.includes('academic') || lowerTitle.includes('exam') || lowerTitle.includes('lecture')) {
+  } else if (
+    lowerCat.includes('university') ||
+    (subcategoryName && subcategoryName.toLowerCase().includes('university')) ||
+    lowerTitle.includes('university') ||
+    lowerCat.includes('academic') ||
+    lowerTitle.includes('exam') ||
+    lowerTitle.includes('lecture')
+  ) {
     phases = [
       {
         title: `Syllabus Audit & Core Reading Breakdown (${subcategoryName || categoryName})`,

@@ -93,7 +93,7 @@ export default function HomeScreen() {
     const sub = cat?.subcategories.find((s) => s.id === task.subcategoryId);
     return {
       categoryName: cat?.name || 'General',
-      subcategoryName: sub?.name || cat?.name || 'Work & Projects',
+      subcategoryName: sub?.name || cat?.name || 'Work Plans',
       color: cat?.color || '#8B5CF6',
     };
   };

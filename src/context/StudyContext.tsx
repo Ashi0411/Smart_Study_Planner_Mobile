@@ -12,7 +12,7 @@ import {
 import { Colors, ColorPalette } from '@/constants/theme';
 
 const STORAGE_KEYS = {
-  CATEGORIES: '@smart_planner_categories_v6',
+  CATEGORIES: '@smart_planner_categories_v7',
   TASKS: '@smart_planner_tasks_v6',
   SCHEDULE: '@smart_planner_schedule_v6',
   WORK_PLANS: '@smart_planner_work_plans_v6',
@@ -24,25 +24,11 @@ const STORAGE_KEYS = {
 export const INITIAL_CATEGORIES: Category[] = [
   {
     id: 'cat-work',
-    name: 'Work & Projects',
+    name: 'Work Plans',
     color: '#8B5CF6',
     icon: 'briefcase-outline',
     subcategories: [
-      { id: 'sub-work-1', categoryId: 'cat-work', name: 'NICR Club' },
-      { id: 'sub-work-2', categoryId: 'cat-work', name: 'ZOOM' },
-      { id: 'sub-work-3', categoryId: 'cat-work', name: 'Web Project' },
-      { id: 'sub-work-4', categoryId: 'cat-work', name: 'Dribble Shot' },
-    ],
-  },
-  {
-    id: 'cat-mkt',
-    name: 'Digital Marketing',
-    color: '#06B6D4',
-    icon: 'megaphone-outline',
-    subcategories: [
-      { id: 'sub-mkt-1', categoryId: 'cat-mkt', name: 'Blog & Content' },
-      { id: 'sub-mkt-2', categoryId: 'cat-mkt', name: 'Campaign Launch' },
-      { id: 'sub-mkt-3', categoryId: 'cat-mkt', name: 'Social Media Strategy' },
+      { id: 'sub-work-uni', categoryId: 'cat-work', name: 'University works' },
     ],
   },
   {
@@ -65,6 +51,17 @@ export const INITIAL_CATEGORIES: Category[] = [
       { id: 'sub-eng-1', categoryId: 'cat-eng', name: 'IELTS Preparation' },
       { id: 'sub-eng-2', categoryId: 'cat-eng', name: 'Speaking Fluency' },
       { id: 'sub-eng-3', categoryId: 'cat-eng', name: 'Vocabulary & Grammar' },
+    ],
+  },
+  {
+    id: 'cat-mkt',
+    name: 'Digital Marketing',
+    color: '#06B6D4',
+    icon: 'megaphone-outline',
+    subcategories: [
+      { id: 'sub-mkt-1', categoryId: 'cat-mkt', name: 'Blog & Content' },
+      { id: 'sub-mkt-2', categoryId: 'cat-mkt', name: 'Campaign Launch' },
+      { id: 'sub-mkt-3', categoryId: 'cat-mkt', name: 'Social Media Strategy' },
     ],
   },
   {
@@ -169,16 +166,87 @@ export const StudyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
         if (storedCategories) {
           const parsed = JSON.parse(storedCategories);
-          const filtered = parsed.filter(
-            (c: Category) =>
-              c.id !== 'cat-cyber' &&
-              c.id !== 'cat-uiux' &&
-              !c.name.toLowerCase().includes('cyber') &&
-              !c.name.toLowerCase().includes('ui/ux')
-          );
-          setCategories(filtered.length > 0 ? filtered : INITIAL_CATEGORIES);
+          const filtered = parsed
+            .filter(
+              (c: Category) =>
+                c.id !== 'cat-cyber' &&
+                c.id !== 'cat-uiux' &&
+                !c.name.toLowerCase().includes('cyber') &&
+                !c.name.toLowerCase().includes('ui/ux')
+            )
+            .map((c: Category) => {
+              if (c.id === 'cat-work' || c.name.toLowerCase().includes('work')) {
+                return {
+                  ...c,
+                  id: 'cat-work',
+                  name: 'Work Plans',
+                  subcategories: [
+                    { id: 'sub-work-uni', categoryId: 'cat-work', name: 'University works' },
+                    ...(c.subcategories || []).filter(
+                      (s: Subcategory) =>
+                        !['sub-work-1', 'sub-work-2', 'sub-work-3', 'sub-work-4'].includes(s.id) &&
+                        !['nicr club', 'zoom', 'web project', 'dribble shot'].includes(
+                          s.name.toLowerCase()
+                        ) &&
+                        s.name.toLowerCase() !== 'university works'
+                    ),
+                  ],
+                };
+              }
+              return c;
+            });
+
+          const hasWorkCat = filtered.some((c: Category) => c.id === 'cat-work');
+          const finalCategories = hasWorkCat
+            ? filtered
+            : [INITIAL_CATEGORIES[0], ...filtered];
+
+          setCategories(finalCategories);
         } else {
-          setCategories(INITIAL_CATEGORIES);
+          // Check if legacy storage had categories and migrate Work Plans
+          const legacyV6 = await AsyncStorage.getItem('@smart_planner_categories_v6');
+          if (legacyV6) {
+            try {
+              const parsed = JSON.parse(legacyV6);
+              const filtered = parsed
+                .filter(
+                  (c: Category) =>
+                    c.id !== 'cat-cyber' &&
+                    c.id !== 'cat-uiux' &&
+                    !c.name.toLowerCase().includes('cyber') &&
+                    !c.name.toLowerCase().includes('ui/ux')
+                )
+                .map((c: Category) => {
+                  if (c.id === 'cat-work' || c.name.toLowerCase().includes('work')) {
+                    return {
+                      ...c,
+                      id: 'cat-work',
+                      name: 'Work Plans',
+                      subcategories: [
+                        { id: 'sub-work-uni', categoryId: 'cat-work', name: 'University works' },
+                        ...(c.subcategories || []).filter(
+                          (s: Subcategory) =>
+                            !['sub-work-1', 'sub-work-2', 'sub-work-3', 'sub-work-4'].includes(s.id) &&
+                            !['nicr club', 'zoom', 'web project', 'dribble shot'].includes(
+                              s.name.toLowerCase()
+                            ) &&
+                            s.name.toLowerCase() !== 'university works'
+                        ),
+                      ],
+                    };
+                  }
+                  return c;
+                });
+              const hasWorkCat = filtered.some((c: Category) => c.id === 'cat-work');
+              const finalCategories = hasWorkCat ? filtered : [INITIAL_CATEGORIES[0], ...filtered];
+              setCategories(finalCategories);
+              await AsyncStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(finalCategories));
+            } catch {
+              setCategories(INITIAL_CATEGORIES);
+            }
+          } else {
+            setCategories(INITIAL_CATEGORIES);
+          }
         }
 
         if (storedTasks) {
