@@ -12,13 +12,13 @@ import {
 import { Colors, ColorPalette } from '@/constants/theme';
 
 const STORAGE_KEYS = {
-  CATEGORIES: '@smart_planner_categories_v5',
-  TASKS: '@smart_planner_tasks_v5',
-  SCHEDULE: '@smart_planner_schedule_v5',
-  WORK_PLANS: '@smart_planner_work_plans_v5',
-  FOCUS_LOGS: '@smart_planner_focus_logs_v5',
-  STREAK: '@smart_planner_streak_v5',
-  THEME_MODE: '@smart_planner_theme_mode_v5',
+  CATEGORIES: '@smart_planner_categories_v6',
+  TASKS: '@smart_planner_tasks_v6',
+  SCHEDULE: '@smart_planner_schedule_v6',
+  WORK_PLANS: '@smart_planner_work_plans_v6',
+  FOCUS_LOGS: '@smart_planner_focus_logs_v6',
+  STREAK: '@smart_planner_streak_v6',
+  THEME_MODE: '@smart_planner_theme_mode_v6',
 };
 
 export const INITIAL_CATEGORIES: Category[] = [
@@ -80,90 +80,9 @@ export const INITIAL_CATEGORIES: Category[] = [
   },
 ];
 
-export const INITIAL_TASKS: StudyTask[] = [
-  {
-    id: 'task-1',
-    title: 'Meeting With Client',
-    categoryId: 'cat-work',
-    subcategoryId: 'sub-work-1',
-    dueDate: 'Due 10 May, 22',
-    priority: 'high',
-    completed: false,
-    progressPercent: 70,
-    isToday: true,
-  },
-  {
-    id: 'task-2',
-    title: 'Redesign Workbox',
-    categoryId: 'cat-work',
-    subcategoryId: 'sub-work-2',
-    dueDate: 'Due 12 Aug 2021',
-    priority: 'medium',
-    completed: false,
-    progressPercent: 45,
-    isToday: true,
-  },
-  {
-    id: 'task-3',
-    title: 'Recording Workshop',
-    categoryId: 'cat-work',
-    subcategoryId: 'sub-work-3',
-    dueDate: 'Due 15 May 2022',
-    priority: 'low',
-    completed: false,
-    progressPercent: 30,
-    isToday: true,
-  },
-  {
-    id: 'task-4',
-    title: 'Create New Blog Post',
-    categoryId: 'cat-mkt',
-    subcategoryId: 'sub-mkt-1',
-    dueDate: 'Due 8 Aug 2021',
-    priority: 'high',
-    completed: false,
-    progressPercent: 58,
-    isToday: false,
-  },
-  {
-    id: 'task-5',
-    title: 'Landing Page Design',
-    categoryId: 'cat-work',
-    subcategoryId: 'sub-work-4',
-    dueDate: 'Due 10 May 2021',
-    priority: 'medium',
-    completed: false,
-    progressPercent: 83,
-    isToday: false,
-  },
-];
+export const INITIAL_TASKS: StudyTask[] = [];
 
-export const INITIAL_WORK_PLANS: WorkPlan[] = [
-  {
-    id: 'plan-1',
-    title: 'Digital Marketing Campaign Sprint',
-    categoryId: 'cat-mkt',
-    targetDeadline: '2026-11-15',
-    createdAt: new Date().toISOString(),
-    subPlans: [
-      { id: 'sp-1', title: 'Target Persona & Keywords', estimatedMinutes: 60, completed: true },
-      { id: 'sp-2', title: 'Create New Blog Post', estimatedMinutes: 90, completed: false },
-      { id: 'sp-3', title: 'Social Distribution & Email Newsletter', estimatedMinutes: 45, completed: false },
-    ],
-  },
-  {
-    id: 'plan-2',
-    title: 'Client Project Delivery',
-    categoryId: 'cat-work',
-    targetDeadline: '2026-11-20',
-    createdAt: new Date().toISOString(),
-    subPlans: [
-      { id: 'sp-4', title: 'Meeting With Client & Alignment', estimatedMinutes: 45, completed: true },
-      { id: 'sp-5', title: 'Redesign Workbox', estimatedMinutes: 120, completed: false },
-      { id: 'sp-6', title: 'Recording Workshop', estimatedMinutes: 60, completed: false },
-    ],
-  },
-];
+export const INITIAL_WORK_PLANS: WorkPlan[] = [];
 
 interface StudyContextType {
   categories: Category[];
@@ -221,7 +140,7 @@ export const StudyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [schedule, setSchedule] = useState<ScheduleSession[]>([]);
   const [workPlans, setWorkPlans] = useState<WorkPlan[]>(INITIAL_WORK_PLANS);
   const [focusLogs, setFocusLogs] = useState<FocusLog[]>([]);
-  const [streakDays, setStreakDays] = useState<number>(3);
+  const [streakDays, setStreakDays] = useState<number>(0);
   const [dailyGoalMinutes] = useState<number>(120);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [themeMode, setThemeMode] = useState<'light' | 'dark'>('light');
@@ -265,11 +184,42 @@ export const StudyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (storedTasks) {
           const parsed = JSON.parse(storedTasks);
           const filtered = parsed.filter(
-            (t: StudyTask) => t.categoryId !== 'cat-cyber' && t.categoryId !== 'cat-uiux'
+            (t: StudyTask) =>
+              t.categoryId !== 'cat-cyber' &&
+              t.categoryId !== 'cat-uiux' &&
+              !t.id.startsWith('task-') &&
+              t.title !== 'Meeting With Client' &&
+              t.title !== 'Redesign Workbox' &&
+              t.title !== 'Recording Workshop' &&
+              t.title !== 'Create New Blog Post' &&
+              t.title !== 'Landing Page Design'
           );
-          setTasks(filtered.length > 0 ? filtered : INITIAL_TASKS);
+          setTasks(filtered);
         } else {
-          setTasks(INITIAL_TASKS);
+          // Check if legacy storage had tasks and purge mock tasks
+          const legacyV5 = await AsyncStorage.getItem('@smart_planner_tasks_v5');
+          if (legacyV5) {
+            try {
+              const parsed = JSON.parse(legacyV5);
+              const filtered = parsed.filter(
+                (t: StudyTask) =>
+                  t.categoryId !== 'cat-cyber' &&
+                  t.categoryId !== 'cat-uiux' &&
+                  !t.id.startsWith('task-') &&
+                  t.title !== 'Meeting With Client' &&
+                  t.title !== 'Redesign Workbox' &&
+                  t.title !== 'Recording Workshop' &&
+                  t.title !== 'Create New Blog Post' &&
+                  t.title !== 'Landing Page Design'
+              );
+              setTasks(filtered);
+              await AsyncStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(filtered));
+            } catch {
+              setTasks([]);
+            }
+          } else {
+            setTasks([]);
+          }
         }
 
         if (storedSchedule) setSchedule(JSON.parse(storedSchedule));
@@ -277,11 +227,15 @@ export const StudyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (storedWorkPlans) {
           const parsed = JSON.parse(storedWorkPlans);
           const filtered = parsed.filter(
-            (p: WorkPlan) => p.categoryId !== 'cat-cyber' && p.categoryId !== 'cat-uiux'
+            (p: WorkPlan) =>
+              p.categoryId !== 'cat-cyber' &&
+              p.categoryId !== 'cat-uiux' &&
+              p.id !== 'plan-1' &&
+              p.id !== 'plan-2'
           );
-          setWorkPlans(filtered.length > 0 ? filtered : INITIAL_WORK_PLANS);
+          setWorkPlans(filtered);
         } else {
-          setWorkPlans(INITIAL_WORK_PLANS);
+          setWorkPlans([]);
         }
 
         if (storedFocusLogs) setFocusLogs(JSON.parse(storedFocusLogs));

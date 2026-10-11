@@ -111,22 +111,19 @@ export default function HomeScreen() {
 
   // Separate Today's tasks from Pending tasks
   const todayTasks = useMemo(() => {
-    const list = filteredTasks.filter((t) => t.isToday || t.priority === 'high');
-    return list.length > 0 ? list : filteredTasks.slice(0, 3);
+    return filteredTasks.filter((t) => t.isToday || t.priority === 'high');
   }, [filteredTasks]);
 
   const pendingTasks = useMemo(() => {
     const todayIds = new Set(todayTasks.map((t) => t.id));
-    const list = filteredTasks.filter((t) => !todayIds.has(t.id) && !t.completed);
-    return list.length > 0 ? list : filteredTasks.filter((t) => !t.completed);
+    return filteredTasks.filter((t) => !todayIds.has(t.id) && !t.completed);
   }, [filteredTasks, todayTasks]);
 
-  // Overall completion for Hero Card Ring (default to 70% if empty, or calculate dynamically)
+  // Overall completion for Hero Card Ring (0% when empty)
   const heroProgress = useMemo(() => {
-    if (tasks.length === 0) return 70;
+    if (tasks.length === 0) return 0;
     const completedCount = tasks.filter((t) => t.completed).length;
-    const computed = Math.round((completedCount / tasks.length) * 100);
-    return computed > 0 ? computed : 70;
+    return Math.round((completedCount / tasks.length) * 100);
   }, [tasks]);
 
   const isDark = themeMode === 'dark';
@@ -194,7 +191,14 @@ export default function HomeScreen() {
           style={styles.heroCard}>
           {/* Left Circular Ring */}
           <View style={styles.circleContainer}>
-            <View style={styles.circleOuterRing}>
+            <View
+              style={[
+                styles.circleOuterRing,
+                heroProgress === 0 && {
+                  borderColor: 'rgba(255, 255, 255, 0.4)',
+                  borderLeftColor: 'rgba(255, 255, 255, 0.4)',
+                },
+              ]}>
               <View style={styles.circleInner}>
                 <Text style={styles.circlePercentText}>{heroProgress}%</Text>
               </View>
@@ -203,12 +207,34 @@ export default function HomeScreen() {
 
           {/* Right Hero Info */}
           <View style={styles.heroDetails}>
-            <Text style={styles.heroTitle}>Great News!</Text>
-            <Text style={styles.heroSubtitle}>Your task is almost done!</Text>
+            <Text style={styles.heroTitle}>
+              {tasks.length === 0
+                ? 'Welcome!'
+                : heroProgress === 100
+                ? 'Awesome job! 🎉'
+                : heroProgress >= 50
+                ? 'Great News!'
+                : 'Keep Going!'}
+            </Text>
+            <Text style={styles.heroSubtitle}>
+              {tasks.length === 0
+                ? 'No tasks yet. Create one to get started!'
+                : heroProgress === 100
+                ? 'All tasks completed for today!'
+                : heroProgress >= 50
+                ? 'Your task is almost done!'
+                : `${tasks.filter((t) => !t.completed).length} pending task${
+                    tasks.filter((t) => !t.completed).length === 1 ? '' : 's'
+                  } to complete`}
+            </Text>
             <Pressable
-              onPress={() => router.push('/tasks')}
+              onPress={() =>
+                tasks.length === 0 ? setIsTaskModalVisible(true) : router.push('/tasks')
+              }
               style={styles.viewTaskButton}>
-              <Text style={styles.viewTaskButtonText}>View Task</Text>
+              <Text style={styles.viewTaskButtonText}>
+                {tasks.length === 0 ? '+ Add Task' : 'View Task'}
+              </Text>
             </Pressable>
           </View>
         </LinearGradient>
@@ -226,69 +252,93 @@ export default function HomeScreen() {
           </Pressable>
         </View>
 
-        {/* Horizontal Carousel of Pastel Cards */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.horizontalScrollContent}>
-          {todayTasks.map((task, index) => {
-            const colorTheme = TODAY_PASTEL_COLORS[index % TODAY_PASTEL_COLORS.length];
-            const { subcategoryName } = getTaskCategoryInfo(task);
-
-            return (
-              <Pressable
-                key={task.id}
-                onPress={() => toggleTask(task.id)}
-                style={[
-                  styles.todayCard,
-                  {
-                    backgroundColor: isDark ? colorTheme.darkBg : colorTheme.bg,
-                    borderColor: isDark ? colorTheme.darkBorder : colorTheme.border,
-                  },
-                ]}>
-                <Text style={styles.cardSubtitle} numberOfLines={1}>
-                  {subcategoryName}
-                </Text>
-                <Text
-                  style={[
-                    styles.cardTitle,
-                    { color: isDark ? '#FFFFFF' : '#111827' },
-                    task.completed && styles.cardTitleCompleted,
-                  ]}
-                  numberOfLines={2}>
-                  {task.title}
-                </Text>
-                <View style={styles.cardFooter}>
-                  <View
-                    style={[
-                      styles.greenDot,
-                      { backgroundColor: task.completed ? '#6B7280' : colorTheme.dot },
-                    ]}
-                  />
-                  <Text style={[styles.cardDueText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                    {task.completed ? 'Completed' : task.dueDate || 'Due Today'}
-                  </Text>
-                </View>
-              </Pressable>
-            );
-          })}
-
-          {/* Quick Add Card at end of horizontal list */}
+        {/* Horizontal Carousel of Pastel Cards or Empty State */}
+        {todayTasks.length === 0 ? (
           <Pressable
             onPress={() => setIsTaskModalVisible(true)}
             style={[
-              styles.todayAddCard,
+              styles.emptyStateCard,
               {
                 backgroundColor: isDark ? '#1F2937' : '#F9FAFB',
-                borderColor: colors.cardBorder,
+                borderColor: isDark ? '#374151' : '#E5E7EB',
               },
             ]}>
             <View style={styles.addCardIconCircle}>
               <Ionicons name="add" size={24} color="#8B5CF6" />
             </View>
-            <Text style={[styles.addCardText, { color: colors.textSecondary }]}>Add Task</Text>
+            <View style={{ flex: 1, marginLeft: 14 }}>
+              <Text style={[styles.emptyCardTitle, { color: colors.text }]}>
+                No tasks scheduled for today
+              </Text>
+              <Text style={[styles.emptyCardSub, { color: colors.textSecondary }]}>
+                Tap here to add your first task
+              </Text>
+            </View>
           </Pressable>
-        </ScrollView>
+        ) : (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.horizontalScrollContent}>
+            {todayTasks.map((task, index) => {
+              const colorTheme = TODAY_PASTEL_COLORS[index % TODAY_PASTEL_COLORS.length];
+              const { subcategoryName } = getTaskCategoryInfo(task);
+
+              return (
+                <Pressable
+                  key={task.id}
+                  onPress={() => toggleTask(task.id)}
+                  style={[
+                    styles.todayCard,
+                    {
+                      backgroundColor: isDark ? colorTheme.darkBg : colorTheme.bg,
+                      borderColor: isDark ? colorTheme.darkBorder : colorTheme.border,
+                    },
+                  ]}>
+                  <Text style={styles.cardSubtitle} numberOfLines={1}>
+                    {subcategoryName}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.cardTitle,
+                      { color: isDark ? '#FFFFFF' : '#111827' },
+                      task.completed && styles.cardTitleCompleted,
+                    ]}
+                    numberOfLines={2}>
+                    {task.title}
+                  </Text>
+                  <View style={styles.cardFooter}>
+                    <View
+                      style={[
+                        styles.greenDot,
+                        { backgroundColor: task.completed ? '#6B7280' : colorTheme.dot },
+                      ]}
+                    />
+                    <Text style={[styles.cardDueText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                      {task.completed ? 'Completed' : task.dueDate || 'Due Today'}
+                    </Text>
+                  </View>
+                </Pressable>
+              );
+            })}
+
+            {/* Quick Add Card at end of horizontal list */}
+            <Pressable
+              onPress={() => setIsTaskModalVisible(true)}
+              style={[
+                styles.todayAddCard,
+                {
+                  backgroundColor: isDark ? '#1F2937' : '#F9FAFB',
+                  borderColor: colors.cardBorder,
+                },
+              ]}>
+              <View style={styles.addCardIconCircle}>
+                <Ionicons name="add" size={24} color="#8B5CF6" />
+              </View>
+              <Text style={[styles.addCardText, { color: colors.textSecondary }]}>Add Task</Text>
+            </Pressable>
+          </ScrollView>
+        )}
 
         {/* Section: Pending Task */}
         <View style={styles.sectionHeaderRow}>
@@ -303,77 +353,99 @@ export default function HomeScreen() {
           </Pressable>
         </View>
 
-        {/* Vertical Stack of Wide Cards */}
-        <View style={styles.pendingListContainer}>
-          {pendingTasks.map((task, index) => {
-            const cardTheme = PENDING_CARD_STYLES[index % PENDING_CARD_STYLES.length];
-            const { subcategoryName, categoryName } = getTaskCategoryInfo(task);
-            const progress = task.progressPercent ?? 65;
+        {/* Vertical Stack of Wide Cards or Empty State */}
+        {pendingTasks.length === 0 ? (
+          <View
+            style={[
+              styles.emptyStateCard,
+              {
+                backgroundColor: isDark ? '#1F2937' : '#F9FAFB',
+                borderColor: isDark ? '#374151' : '#E5E7EB',
+                marginBottom: 20,
+              },
+            ]}>
+            <Ionicons name="checkmark-done-circle-outline" size={28} color="#10B981" />
+            <View style={{ flex: 1, marginLeft: 14 }}>
+              <Text style={[styles.emptyCardTitle, { color: colors.text }]}>
+                No pending tasks
+              </Text>
+              <Text style={[styles.emptyCardSub, { color: colors.textSecondary }]}>
+                All caught up! You have no pending tasks.
+              </Text>
+            </View>
+          </View>
+        ) : (
+          <View style={styles.pendingListContainer}>
+            {pendingTasks.map((task, index) => {
+              const cardTheme = PENDING_CARD_STYLES[index % PENDING_CARD_STYLES.length];
+              const { subcategoryName, categoryName } = getTaskCategoryInfo(task);
+              const progress = task.progressPercent ?? 65;
 
-            return (
-              <Pressable
-                key={task.id}
-                onPress={() => toggleTask(task.id)}
-                style={[
-                  styles.pendingCard,
-                  {
-                    backgroundColor: isDark ? cardTheme.darkBg : cardTheme.bg,
-                    borderColor: isDark ? cardTheme.darkBorder : cardTheme.border,
-                  },
-                ]}>
-                {/* Left Colored Accent Stripe */}
-                <View style={[styles.accentStripe, { backgroundColor: cardTheme.stripe }]} />
+              return (
+                <Pressable
+                  key={task.id}
+                  onPress={() => toggleTask(task.id)}
+                  style={[
+                    styles.pendingCard,
+                    {
+                      backgroundColor: isDark ? cardTheme.darkBg : cardTheme.bg,
+                      borderColor: isDark ? cardTheme.darkBorder : cardTheme.border,
+                    },
+                  ]}>
+                  {/* Left Colored Accent Stripe */}
+                  <View style={[styles.accentStripe, { backgroundColor: cardTheme.stripe }]} />
 
-                <View style={styles.pendingCardContent}>
-                  <Text style={styles.pendingSubtitle}>
-                    {subcategoryName !== 'General' ? subcategoryName : categoryName}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.pendingTitle,
-                      { color: isDark ? '#FFFFFF' : '#0F172A' },
-                      task.completed && styles.cardTitleCompleted,
-                    ]}>
-                    {task.title}
-                  </Text>
-
-                  {/* Progress Bar */}
-                  <View
-                    style={[
-                      styles.progressBarTrack,
-                      {
-                        backgroundColor: isDark ? '#374151' : cardTheme.progressTrack,
-                      },
-                    ]}>
-                    <View
-                      style={[
-                        styles.progressBarFill,
-                        {
-                          width: `${task.completed ? 100 : progress}%`,
-                          backgroundColor: cardTheme.progressFill,
-                        },
-                      ]}
-                    />
-                  </View>
-
-                  {/* Footer Row */}
-                  <View style={styles.pendingFooterRow}>
-                    <Text style={styles.pendingDueDate}>
-                      {task.completed ? 'Completed' : task.dueDate || 'Due Soon'}
+                  <View style={styles.pendingCardContent}>
+                    <Text style={styles.pendingSubtitle}>
+                      {subcategoryName !== 'General' ? subcategoryName : categoryName}
                     </Text>
                     <Text
                       style={[
-                        styles.pendingPercentText,
-                        { color: isDark ? '#E5E7EB' : '#0F172A' },
+                        styles.pendingTitle,
+                        { color: isDark ? '#FFFFFF' : '#0F172A' },
+                        task.completed && styles.cardTitleCompleted,
                       ]}>
-                      {task.completed ? '100%' : `${progress}%`}
+                      {task.title}
                     </Text>
+
+                    {/* Progress Bar */}
+                    <View
+                      style={[
+                        styles.progressBarTrack,
+                        {
+                          backgroundColor: isDark ? '#374151' : cardTheme.progressTrack,
+                        },
+                      ]}>
+                      <View
+                        style={[
+                          styles.progressBarFill,
+                          {
+                            width: `${task.completed ? 100 : progress}%`,
+                            backgroundColor: cardTheme.progressFill,
+                          },
+                        ]}
+                      />
+                    </View>
+
+                    {/* Footer Row */}
+                    <View style={styles.pendingFooterRow}>
+                      <Text style={styles.pendingDueDate}>
+                        {task.completed ? 'Completed' : task.dueDate || 'Due Soon'}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.pendingPercentText,
+                          { color: isDark ? '#E5E7EB' : '#0F172A' },
+                        ]}>
+                        {task.completed ? '100%' : `${progress}%`}
+                      </Text>
+                    </View>
                   </View>
-                </View>
-              </Pressable>
-            );
-          })}
-        </View>
+                </Pressable>
+              );
+            })}
+          </View>
+        )}
 
         {/* Action Bar for Custom Work Plans, Categories & AI Assistant */}
         <View style={[styles.quickManagerBar, { borderColor: colors.cardBorder }]}>
@@ -745,5 +817,22 @@ const styles = StyleSheet.create({
   managerPillBtnTextSecondary: {
     fontSize: 13,
     fontWeight: '600',
+  },
+  emptyStateCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    marginBottom: 20,
+  },
+  emptyCardTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  emptyCardSub: {
+    fontSize: 12,
+    marginTop: 2,
   },
 });
