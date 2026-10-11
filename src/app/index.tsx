@@ -404,8 +404,26 @@ export default function HomeScreen() {
           </Pressable>
         )}
 
-        {/* Create Work Plan Button */}
-        <View style={styles.createWorkPlanContainer}>
+        {/* Action Buttons: Create Category & Create Work Plan */}
+        <View style={styles.actionButtonsContainer}>
+          {/* Create Category Button */}
+          <Pressable
+            onPress={() => setIsCategoryModalVisible(true)}
+            style={({ pressed }) => [
+              styles.createCategoryBtn,
+              {
+                backgroundColor: isDark ? '#1E1B4B' : '#F5F3FF',
+                borderColor: isDark ? '#3730A3' : '#E0E7FF',
+              },
+              pressed && { opacity: 0.85, transform: [{ scale: 0.99 }] },
+            ]}>
+            <Ionicons name="folder-outline" size={18} color={isDark ? '#C7D2FE' : '#6366F1'} />
+            <Text style={[styles.createCategoryText, { color: isDark ? '#C7D2FE' : '#6366F1' }]}>
+              Create Category
+            </Text>
+          </Pressable>
+
+          {/* Create Work Plan Button */}
           <Pressable
             onPress={() => setIsWorkPlanModalVisible(true)}
             style={({ pressed }) => [
@@ -798,9 +816,25 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
   },
-  createWorkPlanContainer: {
-    marginTop: 6,
+  actionButtonsContainer: {
+    marginTop: 8,
     marginBottom: 20,
+    gap: 10,
+  },
+  createCategoryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    gap: 8,
+  },
+  createCategoryText: {
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: -0.2,
   },
   createWorkPlanBtn: {
     borderRadius: 18,
