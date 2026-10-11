@@ -7,11 +7,13 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as ImagePicker from 'expo-image-picker';
 import { useStudy } from '@/context/StudyContext';
 import { useAuth } from '@/context/AuthContext';
 import { FocusMode } from '@/types/study';
@@ -26,7 +28,7 @@ const MODE_DURATIONS: Record<FocusMode, number> = {
 export default function FocusScreen() {
   const router = useRouter();
   const { categories, logFocusSession, todayFocusMinutes, streakDays, colors, themeMode, toggleThemeMode } = useStudy();
-  const { user, profile, isConfigured, signOut, resetPassword } = useAuth();
+  const { user, profile, isConfigured, signOut, resetPassword, updateProfile } = useAuth();
   const isDark = themeMode === 'dark';
 
   const [activeTab, setActiveTab] = useState<'profile' | 'timer'>('profile');
@@ -36,8 +38,54 @@ export default function FocusScreen() {
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [sessionsCompletedToday, setSessionsCompletedToday] = useState<number>(0);
   const [isSignOutLoading, setIsSignOutLoading] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Pick user profile image
+  const handlePickAvatar = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permissionResult.granted) {
+        Alert.alert(
+          'Permission Needed',
+          'Please allow photo library access so you can select your profile picture.'
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.85,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setIsUploadingImage(true);
+        const selectedUri = result.assets[0].uri;
+        await updateProfile({ avatarUrl: selectedUri });
+      }
+    } catch (err) {
+      console.warn('Error picking image:', err);
+      Alert.alert('Notice', 'Unable to pick image. Please try again.');
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  const handleRemoveAvatar = () => {
+    Alert.alert('Remove Photo', 'Are you sure you want to remove your profile photo?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: async () => {
+          await updateProfile({ avatarUrl: undefined });
+        },
+      },
+    ]);
+  };
 
   // Switch timer mode
   const handleModeChange = useCallback((newMode: FocusMode) => {
@@ -181,13 +229,64 @@ export default function FocusScreen() {
           <View style={styles.profileSection}>
             {user || profile ? (
               <View style={styles.userCard}>
-                <LinearGradient
-                  colors={['#8B5CF6', '#C084FC']}
-                  style={styles.profileAvatar}>
-                  <Text style={styles.profileAvatarText}>
-                    {profile?.fullName ? profile.fullName.charAt(0).toUpperCase() : 'U'}
-                  </Text>
-                </LinearGradient>
+                {/* Avatar with Camera Badge */}
+                <View style={styles.avatarWrapper}>
+                  {profile?.avatarUrl ? (
+                    <Image
+                      source={{ uri: profile.avatarUrl }}
+                      style={styles.profileAvatarImage}
+                    />
+                  ) : (
+                    <LinearGradient
+                      colors={['#8B5CF6', '#C084FC']}
+                      style={styles.profileAvatar}>
+                      <Text style={styles.profileAvatarText}>
+                        {profile?.fullName ? profile.fullName.charAt(0).toUpperCase() : 'U'}
+                      </Text>
+                    </LinearGradient>
+                  )}
+
+                  <Pressable
+                    onPress={handlePickAvatar}
+                    disabled={isUploadingImage}
+                    hitSlop={8}
+                    style={styles.cameraIconBadge}>
+                    {isUploadingImage ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <Ionicons name="camera" size={17} color="#FFFFFF" />
+                    )}
+                  </Pressable>
+                </View>
+
+                {/* Photo Actions Row */}
+                <View style={styles.photoActionsRow}>
+                  <Pressable
+                    onPress={handlePickAvatar}
+                    disabled={isUploadingImage}
+                    style={[
+                      styles.photoActionBtn,
+                      { borderColor: colors.cardBorder, backgroundColor: colors.card },
+                    ]}>
+                    <Ionicons name="image-outline" size={14} color="#8B5CF6" />
+                    <Text style={[styles.photoActionBtnText, { color: colors.text }]}>
+                      {profile?.avatarUrl ? 'Change Photo' : 'Upload Photo'}
+                    </Text>
+                  </Pressable>
+                  {Boolean(profile?.avatarUrl) && (
+                    <Pressable
+                      onPress={handleRemoveAvatar}
+                      style={[
+                        styles.photoActionBtn,
+                        { borderColor: '#FCA5A5', backgroundColor: '#FEF2F2' },
+                      ]}>
+                      <Ionicons name="trash-outline" size={14} color="#EF4444" />
+                      <Text style={[styles.photoActionBtnText, { color: '#EF4444' }]}>
+                        Remove
+                      </Text>
+                    </Pressable>
+                  )}
+                </View>
 
                 <Text style={[styles.profileName, { color: colors.text }]}>
                   {profile?.fullName || 'Active Student'}
@@ -211,80 +310,58 @@ export default function FocusScreen() {
                         styles.configBadgeText,
                         { color: isConfigured ? '#047857' : '#1D4ED8' },
                       ]}>
-                      {isConfigured ? 'Supabase Live Cloud' : 'Local Device Account'}
+                      {isConfigured ? 'Supabase Live' : 'Active Account'}
                     </Text>
                   </View>
                 </View>
 
-                {/* Cloud Setup Notice if running locally */}
-                {!isConfigured && (
-                  <View
-                    style={[
-                      styles.setupNoticeBox,
-                      {
-                        backgroundColor: isDark ? '#1E293B' : '#EFF6FF',
-                        borderColor: '#93C5FD',
-                      },
-                    ]}>
-                    <View style={styles.setupNoticeHeader}>
-                      <Ionicons name="cloud-offline-outline" size={18} color="#3B82F6" />
-                      <Text style={[styles.setupNoticeTitle, { color: isDark ? '#93C5FD' : '#1E40AF' }]}>
-                        Connect Real Supabase Cloud
-                      </Text>
-                    </View>
-                    <Text style={[styles.setupNoticeText, { color: isDark ? '#CBD5E1' : '#334155' }]}>
-                      To sync your account with your real Supabase PostgreSQL database, add your project URL &amp; Anon Key into the .env file.
-                    </Text>
-                  </View>
-                )}
-
-                {/* Cloud Security Architecture Info */}
+                {/* User Stats & Activity Overview */}
                 <View
                   style={[
-                    styles.securityCard,
+                    styles.userSummaryCard,
                     {
                       backgroundColor: isDark ? '#1F2937' : '#F8FAFC',
                       borderColor: colors.cardBorder,
                     },
                   ]}>
-                  <Text style={[styles.securityCardHeading, { color: colors.text }]}>
-                    Supabase Cloud Security Architecture
-                  </Text>
-
-                  <View style={styles.securityPoint}>
-                    <Ionicons name="key" size={16} color="#8B5CF6" />
-                    <View style={styles.securityPointTextWrap}>
-                      <Text style={[styles.securityPointTitle, { color: colors.text }]}>
-                        Hardware-Backed KeyStore Token
-                      </Text>
-                      <Text style={[styles.securityPointDesc, { color: colors.textSecondary }]}>
-                        Stored in iOS Keychain / Android KeyStore using AES-GCM encryption.
-                      </Text>
+                  <View style={styles.summaryItem}>
+                    <View style={[styles.summaryIconBg, { backgroundColor: '#EDE9FE' }]}>
+                      <Ionicons name="time" size={18} color="#8B5CF6" />
                     </View>
+                    <Text style={[styles.summaryVal, { color: colors.text }]}>
+                      {todayFocusMinutes}m
+                    </Text>
+                    <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>
+                      Today&apos;s Focus
+                    </Text>
                   </View>
 
-                  <View style={styles.securityPoint}>
-                    <Ionicons name="shield" size={16} color="#10B981" />
-                    <View style={styles.securityPointTextWrap}>
-                      <Text style={[styles.securityPointTitle, { color: colors.text }]}>
-                        PostgreSQL Row Level Security (RLS)
-                      </Text>
-                      <Text style={[styles.securityPointDesc, { color: colors.textSecondary }]}>
-                        Database policies enforce strict isolation per user ID.
-                      </Text>
+                  <View style={[styles.summaryDivider, { backgroundColor: colors.cardBorder }]} />
+
+                  <View style={styles.summaryItem}>
+                    <View style={[styles.summaryIconBg, { backgroundColor: '#FEF3C7' }]}>
+                      <Ionicons name="flame" size={18} color="#F59E0B" />
                     </View>
+                    <Text style={[styles.summaryVal, { color: colors.streak }]}>
+                      {streakDays}d
+                    </Text>
+                    <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>
+                      Day Streak
+                    </Text>
                   </View>
 
-                  <View style={styles.securityPoint}>
-                    <Ionicons name="cloud-upload" size={16} color="#06B6D4" />
-                    <View style={styles.securityPointTextWrap}>
-                      <Text style={[styles.securityPointTitle, { color: colors.text }]}>
-                        Supabase Storage Integration
-                      </Text>
-                      <Text style={[styles.securityPointDesc, { color: colors.textSecondary }]}>
-                        Encrypted bucket storage for avatars and study attachments.
-                      </Text>
+                  <View style={[styles.summaryDivider, { backgroundColor: colors.cardBorder }]} />
+
+                  <View style={styles.summaryItem}>
+                    <View style={[styles.summaryIconBg, { backgroundColor: '#ECFDF5' }]}>
+                      <Ionicons name="checkmark-done-circle" size={18} color="#10B981" />
                     </View>
+                    <Text style={[styles.summaryVal, { color: colors.text }]}>
+                      {sessionsCompletedToday}
+                    </Text>
+                    <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>
+                      Sessions
+                    </Text>
                   </View>
                 </View>
 
@@ -557,22 +634,69 @@ const styles = StyleSheet.create({
   userCard: {
     alignItems: 'center',
   },
+  avatarWrapper: {
+    position: 'relative',
+    marginBottom: 8,
+  },
   profileAvatar: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
+    width: 84,
+    height: 84,
+    borderRadius: 42,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
     shadowColor: '#8B5CF6',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35,
     shadowRadius: 10,
     elevation: 6,
   },
+  profileAvatarImage: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    borderWidth: 3,
+    borderColor: '#8B5CF6',
+  },
+  cameraIconBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#8B5CF6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2.5,
+    borderColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  photoActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
+  },
+  photoActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  photoActionBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
   profileAvatarText: {
     color: '#FFFFFF',
-    fontSize: 32,
+    fontSize: 34,
     fontWeight: '800',
   },
   profileName: {
@@ -582,13 +706,13 @@ const styles = StyleSheet.create({
   },
   profileEmail: {
     fontSize: 13,
-    marginBottom: 12,
+    marginBottom: 10,
   },
   accountBadgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 18,
+    marginBottom: 16,
   },
   verifiedBadge: {
     flexDirection: 'row',
@@ -613,56 +737,41 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
   },
-  setupNoticeBox: {
+  userSummaryCard: {
     alignSelf: 'stretch',
-    padding: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-    marginBottom: 16,
-    gap: 6,
-  },
-  setupNoticeHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-  },
-  setupNoticeTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  setupNoticeText: {
-    fontSize: 12,
-    lineHeight: 17,
-  },
-  securityCard: {
-    alignSelf: 'stretch',
-    padding: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
     borderRadius: 18,
     borderWidth: 1,
-    marginBottom: 18,
-    gap: 12,
+    marginBottom: 16,
   },
-  securityCardHeading: {
-    fontSize: 14,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  securityPoint: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-  },
-  securityPointTextWrap: {
+  summaryItem: {
     flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  securityPointTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    marginBottom: 2,
+  summaryIconBg: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
   },
-  securityPointDesc: {
+  summaryVal: {
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  summaryLabel: {
     fontSize: 11,
-    lineHeight: 16,
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  summaryDivider: {
+    width: 1,
+    height: '65%',
   },
   actionsList: {
     alignSelf: 'stretch',

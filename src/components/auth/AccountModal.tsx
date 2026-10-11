@@ -8,10 +8,12 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '@/context/AuthContext';
 import { useStudy } from '@/context/StudyContext';
 
@@ -22,11 +24,56 @@ interface Props {
 
 export const AccountModal: React.FC<Props> = ({ visible, onClose }) => {
   const router = useRouter();
-  const { user, profile, isConfigured, signOut, resetPassword } = useAuth();
-  const { colors, themeMode, toggleThemeMode } = useStudy();
+  const { user, profile, isConfigured, signOut, resetPassword, updateProfile } = useAuth();
+  const { colors, themeMode, toggleThemeMode, todayFocusMinutes, streakDays } = useStudy();
   const isDark = themeMode === 'dark';
 
   const [isLoading, setIsLoading] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+
+  const handlePickAvatar = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permissionResult.granted) {
+        Alert.alert(
+          'Permission Needed',
+          'Please allow photo library access so you can select your profile picture.'
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.85,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setIsUploadingImage(true);
+        const selectedUri = result.assets[0].uri;
+        await updateProfile({ avatarUrl: selectedUri });
+      }
+    } catch (err) {
+      console.warn('Error picking image:', err);
+      Alert.alert('Notice', 'Unable to pick image. Please try again.');
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  const handleRemoveAvatar = () => {
+    Alert.alert('Remove Photo', 'Are you sure you want to remove your profile photo?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: async () => {
+          await updateProfile({ avatarUrl: undefined });
+        },
+      },
+    ]);
+  };
 
   const handleSignOut = async () => {
     setIsLoading(true);
@@ -83,13 +130,64 @@ export const AccountModal: React.FC<Props> = ({ visible, onClose }) => {
             {user || profile ? (
               /* Logged In View */
               <View style={styles.loggedInSection}>
-                <LinearGradient
-                  colors={['#8B5CF6', '#C084FC']}
-                  style={styles.avatarCircle}>
-                  <Text style={styles.avatarText}>
-                    {profile?.fullName ? profile.fullName.charAt(0).toUpperCase() : 'U'}
-                  </Text>
-                </LinearGradient>
+                {/* Avatar with Camera Badge */}
+                <View style={styles.avatarWrapper}>
+                  {profile?.avatarUrl ? (
+                    <Image
+                      source={{ uri: profile.avatarUrl }}
+                      style={styles.profileAvatarImage}
+                    />
+                  ) : (
+                    <LinearGradient
+                      colors={['#8B5CF6', '#C084FC']}
+                      style={styles.avatarCircle}>
+                      <Text style={styles.avatarText}>
+                        {profile?.fullName ? profile.fullName.charAt(0).toUpperCase() : 'U'}
+                      </Text>
+                    </LinearGradient>
+                  )}
+
+                  <Pressable
+                    onPress={handlePickAvatar}
+                    disabled={isUploadingImage}
+                    hitSlop={8}
+                    style={styles.cameraIconBadge}>
+                    {isUploadingImage ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <Ionicons name="camera" size={16} color="#FFFFFF" />
+                    )}
+                  </Pressable>
+                </View>
+
+                {/* Photo Actions Row */}
+                <View style={styles.photoActionsRow}>
+                  <Pressable
+                    onPress={handlePickAvatar}
+                    disabled={isUploadingImage}
+                    style={[
+                      styles.photoActionBtn,
+                      { borderColor: colors.cardBorder, backgroundColor: colors.card },
+                    ]}>
+                    <Ionicons name="image-outline" size={13} color="#8B5CF6" />
+                    <Text style={[styles.photoActionBtnText, { color: colors.text }]}>
+                      {profile?.avatarUrl ? 'Change Photo' : 'Upload Photo'}
+                    </Text>
+                  </Pressable>
+                  {Boolean(profile?.avatarUrl) && (
+                    <Pressable
+                      onPress={handleRemoveAvatar}
+                      style={[
+                        styles.photoActionBtn,
+                        { borderColor: '#FCA5A5', backgroundColor: '#FEF2F2' },
+                      ]}>
+                      <Ionicons name="trash-outline" size={13} color="#EF4444" />
+                      <Text style={[styles.photoActionBtnText, { color: '#EF4444' }]}>
+                        Remove
+                      </Text>
+                    </Pressable>
+                  )}
+                </View>
 
                 <Text style={[styles.userName, { color: colors.text }]}>
                   {profile?.fullName || 'Active Student'}
@@ -98,37 +196,34 @@ export const AccountModal: React.FC<Props> = ({ visible, onClose }) => {
                   {profile?.email || user?.email}
                 </Text>
 
-                {/* Cloud & Security Status Card */}
+                {/* User Stats Card */}
                 <View
                   style={[
-                    styles.statusCard,
+                    styles.userSummaryCard,
                     {
                       backgroundColor: isDark ? '#1F2937' : '#F8FAFC',
                       borderColor: colors.cardBorder,
                     },
                   ]}>
-                  <Text style={[styles.statusCardTitle, { color: colors.text }]}>
-                    Active Security Protections
-                  </Text>
-
-                  <View style={styles.securityItem}>
-                    <Ionicons name="key" size={16} color="#10B981" />
-                    <Text style={[styles.securityItemText, { color: colors.textSecondary }]}>
-                      Hardware Keychain Token Storage (AES-GCM)
+                  <View style={styles.summaryItem}>
+                    <Ionicons name="time" size={16} color="#8B5CF6" />
+                    <Text style={[styles.summaryVal, { color: colors.text }]}>
+                      {todayFocusMinutes}m
+                    </Text>
+                    <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>
+                      Today&apos;s Focus
                     </Text>
                   </View>
 
-                  <View style={styles.securityItem}>
-                    <Ionicons name="server" size={16} color="#10B981" />
-                    <Text style={[styles.securityItemText, { color: colors.textSecondary }]}>
-                      Supabase PostgreSQL Row Level Security (RLS)
-                    </Text>
-                  </View>
+                  <View style={[styles.summaryDivider, { backgroundColor: colors.cardBorder }]} />
 
-                  <View style={styles.securityItem}>
-                    <Ionicons name="lock-closed" size={16} color="#10B981" />
-                    <Text style={[styles.securityItemText, { color: colors.textSecondary }]}>
-                      Anti-Brute Force Rate Limiting Active
+                  <View style={styles.summaryItem}>
+                    <Ionicons name="flame" size={16} color="#F59E0B" />
+                    <Text style={[styles.summaryVal, { color: colors.streak }]}>
+                      {streakDays}d
+                    </Text>
+                    <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>
+                      Streak
                     </Text>
                   </View>
                 </View>
@@ -303,22 +398,65 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
   },
+  avatarWrapper: {
+    position: 'relative',
+    marginBottom: 8,
+  },
   avatarCircle: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
+    width: 76,
+    height: 76,
+    borderRadius: 38,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
     shadowColor: '#8B5CF6',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
   },
+  profileAvatarImage: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    borderWidth: 2.5,
+    borderColor: '#8B5CF6',
+  },
+  cameraIconBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#8B5CF6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    elevation: 4,
+  },
+  photoActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
+  },
+  photoActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  photoActionBtnText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
   avatarText: {
     color: '#FFFFFF',
-    fontSize: 28,
+    fontSize: 30,
     fontWeight: '800',
   },
   userName: {
@@ -328,29 +466,34 @@ const styles = StyleSheet.create({
   },
   userEmail: {
     fontSize: 13,
-    marginBottom: 16,
+    marginBottom: 14,
   },
-  statusCard: {
+  userSummaryCard: {
     width: '100%',
-    padding: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-    gap: 10,
-    marginBottom: 16,
-  },
-  statusCardTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    marginBottom: 2,
-  },
-  securityItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    marginBottom: 14,
   },
-  securityItemText: {
-    fontSize: 12,
+  summaryItem: {
     flex: 1,
+    alignItems: 'center',
+    gap: 2,
+  },
+  summaryVal: {
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  summaryLabel: {
+    fontSize: 10,
+    fontWeight: '500',
+  },
+  summaryDivider: {
+    width: 1,
+    height: '65%',
   },
   secondaryBtn: {
     width: '100%',
