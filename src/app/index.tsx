@@ -21,6 +21,7 @@ import { ModalAddCategory } from '@/components/study/ModalAddCategory';
 import { AccountModal } from '@/components/auth/AccountModal';
 import { StudyTask } from '@/types/study';
 import { StudyCalendarCard, CalendarMode } from '@/components/study/StudyCalendarCard';
+import { CategoryCard } from '@/components/study/CategoryCard';
 
 
 
@@ -480,6 +481,57 @@ export default function HomeScreen() {
           </Pressable>
         </View>
 
+        {/* Categories & Subjects Section */}
+        <View style={styles.categoriesSection}>
+          <View style={styles.categoriesSectionHeader}>
+            <View style={styles.categoriesSectionTitleRow}>
+              <View
+                style={[
+                  styles.categoriesIconCircle,
+                  { backgroundColor: isDark ? '#1E1B4B' : '#EEF2FF' },
+                ]}>
+                <Ionicons name="folder-open" size={17} color="#6366F1" />
+              </View>
+              <View>
+                <Text
+                  style={[
+                    styles.categoriesSectionTitle,
+                    { color: isDark ? '#FFFFFF' : '#0F172A' },
+                  ]}>
+                  Categories & Subjects
+                </Text>
+                <Text
+                  style={[
+                    styles.categoriesSectionSubtitle,
+                    { color: isDark ? '#94A3B8' : '#64748B' },
+                  ]}>
+                  {categories.length} active subject categories
+                </Text>
+              </View>
+            </View>
+
+            <Pressable
+              onPress={() => setIsCategoryModalVisible(true)}
+              hitSlop={8}
+              style={({ pressed, hovered }: any) => [
+                styles.addCategoryHeaderBtn,
+                {
+                  backgroundColor: isDark ? '#1E1B4B' : '#EEF2FF',
+                  borderColor: isDark ? '#3730A3' : '#C7D2FE',
+                },
+                (hovered || pressed) && { opacity: 0.8 },
+              ]}>
+              <Ionicons name="add" size={15} color="#6366F1" />
+              <Text style={styles.addCategoryHeaderBtnText}>+ Category</Text>
+            </Pressable>
+          </View>
+
+          {/* Category Cards List */}
+          {categories.map((cat) => (
+            <CategoryCard key={cat.id} category={cat} />
+          ))}
+        </View>
+
         {/* Bottom Tab Bar Spacing */}
         <View style={{ height: 90 }} />
       </ScrollView>
@@ -900,6 +952,53 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     letterSpacing: -0.2,
+  },
+  categoriesSection: {
+    marginTop: 6,
+    marginBottom: 20,
+  },
+  categoriesSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+    paddingHorizontal: 2,
+  },
+  categoriesSectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  categoriesIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  categoriesSectionTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+  },
+  categoriesSectionSubtitle: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginTop: 1,
+  },
+  addCategoryHeaderBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  addCategoryHeaderBtnText: {
+    color: '#6366F1',
+    fontSize: 12,
+    fontWeight: '700',
   },
   planCardHovered: {
     transform: [{ translateY: -1.5 }],

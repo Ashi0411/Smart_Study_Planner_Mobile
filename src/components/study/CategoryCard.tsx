@@ -23,12 +23,25 @@ export const CategoryCard: React.FC<Props> = ({ category, onSelectCategory }) =>
     addSubcategory,
     deleteSubcategory,
     deleteCategory,
+    updateCategory,
     getCategoryProgress,
     colors,
   } = useStudy();
 
   const [isAddingSub, setIsAddingSub] = useState(false);
   const [newSubName, setNewSubName] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState(category.name);
+
+  const handleSaveEdit = () => {
+    if (!editName.trim()) return;
+    updateCategory(category.id, {
+      name: editName.trim(),
+      color: category.color,
+      icon: category.icon,
+    });
+    setIsEditing(false);
+  };
 
   const plansInCat = workPlans.filter((p) => p.categoryId === category.id);
   const tasksInCat = tasks.filter((t) => t.categoryId === category.id);
@@ -77,12 +90,39 @@ export const CategoryCard: React.FC<Props> = ({ category, onSelectCategory }) =>
               color={category.color}
             />
           </View>
-          <View style={styles.titleWrap}>
-            <Text style={[styles.name, { color: colors.text }]}>{category.name}</Text>
-            <Text style={[styles.metaCount, { color: colors.textSecondary }]}>
-              {plansInCat.length} Plans • {tasksInCat.length} Tasks • {category.subcategories.length} Subs
-            </Text>
-          </View>
+          {isEditing ? (
+            <View style={styles.editTitleRow}>
+              <TextInput
+                style={[
+                  styles.editInput,
+                  {
+                    backgroundColor: colors.backgroundElement,
+                    color: colors.text,
+                    borderColor: category.color,
+                  },
+                ]}
+                value={editName}
+                onChangeText={setEditName}
+                autoFocus
+                onSubmitEditing={handleSaveEdit}
+              />
+              <Pressable
+                onPress={handleSaveEdit}
+                style={[styles.editSaveBtn, { backgroundColor: category.color }]}>
+                <Ionicons name="checkmark" size={14} color="#FFF" />
+              </Pressable>
+              <Pressable onPress={() => setIsEditing(false)} style={styles.editCancelBtn}>
+                <Ionicons name="close" size={14} color={colors.textSecondary} />
+              </Pressable>
+            </View>
+          ) : (
+            <View style={styles.titleWrap}>
+              <Text style={[styles.name, { color: colors.text }]}>{category.name}</Text>
+              <Text style={[styles.metaCount, { color: colors.textSecondary }]}>
+                {plansInCat.length} Plans • {tasksInCat.length} Tasks • {category.subcategories.length} Subs
+              </Text>
+            </View>
+          )}
         </Pressable>
 
         <View style={styles.headerRight}>
@@ -96,7 +136,17 @@ export const CategoryCard: React.FC<Props> = ({ category, onSelectCategory }) =>
             </Text>
           </View>
 
-          <Pressable onPress={handleDeleteCategory} hitSlop={8} style={styles.delBtn}>
+          <Pressable
+            onPress={() => {
+              setEditName(category.name);
+              setIsEditing(!isEditing);
+            }}
+            hitSlop={8}
+            style={styles.actionIconBtn}>
+            <Ionicons name="pencil-outline" size={15} color={colors.textSecondary} />
+          </Pressable>
+
+          <Pressable onPress={handleDeleteCategory} hitSlop={8} style={styles.actionIconBtn}>
             <Ionicons name="trash-outline" size={15} color={colors.textSecondary} />
           </Pressable>
         </View>
@@ -229,7 +279,33 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
   },
-  delBtn: {
+  actionIconBtn: {
+    padding: 6,
+    borderRadius: 8,
+  },
+  editTitleRow: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  editInput: {
+    flex: 1,
+    borderWidth: 1.5,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  editSaveBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  editCancelBtn: {
     padding: 4,
   },
   progressBarTrack: {

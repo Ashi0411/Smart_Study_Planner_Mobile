@@ -12,7 +12,7 @@ import {
 import { Colors, ColorPalette } from '@/constants/theme';
 
 const STORAGE_KEYS = {
-  CATEGORIES: '@smart_planner_categories_v7',
+  CATEGORIES: '@smart_planner_categories_v10',
   TASKS: '@smart_planner_tasks_v6',
   SCHEDULE: '@smart_planner_schedule_v6',
   WORK_PLANS: '@smart_planner_work_plans_v6',
@@ -23,56 +23,25 @@ const STORAGE_KEYS = {
 
 export const INITIAL_CATEGORIES: Category[] = [
   {
-    id: 'cat-work',
-    name: 'Work Plans',
-    color: '#8B5CF6',
-    icon: 'briefcase-outline',
-    subcategories: [
-      { id: 'sub-work-uni', categoryId: 'cat-work', name: 'University works' },
-    ],
-  },
-  {
-    id: 'cat-uni',
-    name: 'University',
+    id: 'cat-uni-works',
+    name: 'University Works',
     color: '#6366F1',
     icon: 'school-outline',
     subcategories: [
-      { id: 'sub-uni-1', categoryId: 'cat-uni', name: 'Semester Exams' },
-      { id: 'sub-uni-2', categoryId: 'cat-uni', name: 'Assignments' },
-      { id: 'sub-uni-3', categoryId: 'cat-uni', name: 'Lectures & Labs' },
+      { id: 'sub-uni-1', categoryId: 'cat-uni-works', name: 'Assignments' },
+      { id: 'sub-uni-2', categoryId: 'cat-uni-works', name: 'Semester Exams' },
+      { id: 'sub-uni-3', categoryId: 'cat-uni-works', name: 'Lectures & Labs' },
     ],
   },
   {
-    id: 'cat-eng',
-    name: 'English',
-    color: '#F59E0B',
+    id: 'cat-eng-work',
+    name: 'English Work',
+    color: '#10B981',
     icon: 'language-outline',
     subcategories: [
-      { id: 'sub-eng-1', categoryId: 'cat-eng', name: 'IELTS Preparation' },
-      { id: 'sub-eng-2', categoryId: 'cat-eng', name: 'Speaking Fluency' },
-      { id: 'sub-eng-3', categoryId: 'cat-eng', name: 'Vocabulary & Grammar' },
-    ],
-  },
-  {
-    id: 'cat-mkt',
-    name: 'Digital Marketing',
-    color: '#06B6D4',
-    icon: 'megaphone-outline',
-    subcategories: [
-      { id: 'sub-mkt-1', categoryId: 'cat-mkt', name: 'Blog & Content' },
-      { id: 'sub-mkt-2', categoryId: 'cat-mkt', name: 'Campaign Launch' },
-      { id: 'sub-mkt-3', categoryId: 'cat-mkt', name: 'Social Media Strategy' },
-    ],
-  },
-  {
-    id: 'cat-pers',
-    name: 'Personal Goals',
-    color: '#10B981',
-    icon: 'fitness-outline',
-    subcategories: [
-      { id: 'sub-per-1', categoryId: 'cat-pers', name: 'Health & Fitness' },
-      { id: 'sub-per-2', categoryId: 'cat-pers', name: 'Book Reading' },
-      { id: 'sub-per-3', categoryId: 'cat-pers', name: 'Financial Discipline' },
+      { id: 'sub-eng-1', categoryId: 'cat-eng-work', name: 'IELTS Preparation' },
+      { id: 'sub-eng-2', categoryId: 'cat-eng-work', name: 'Speaking Fluency' },
+      { id: 'sub-eng-3', categoryId: 'cat-eng-work', name: 'Vocabulary & Grammar' },
     ],
   },
 ];
@@ -98,6 +67,10 @@ interface StudyContextType {
   addCategory: (
     data: { name: string; color: string; icon: string },
     initialSubcategories?: string[]
+  ) => void;
+  updateCategory: (
+    categoryId: string,
+    data: { name: string; color: string; icon: string }
   ) => void;
   deleteCategory: (categoryId: string) => void;
   addSubcategory: (categoryId: string, name: string) => void;
@@ -166,87 +139,31 @@ export const StudyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
         if (storedCategories) {
           const parsed = JSON.parse(storedCategories);
-          const filtered = parsed
-            .filter(
-              (c: Category) =>
-                c.id !== 'cat-cyber' &&
-                c.id !== 'cat-uiux' &&
-                !c.name.toLowerCase().includes('cyber') &&
-                !c.name.toLowerCase().includes('ui/ux')
-            )
-            .map((c: Category) => {
-              if (c.id === 'cat-work' || c.name.toLowerCase().includes('work')) {
-                return {
-                  ...c,
-                  id: 'cat-work',
-                  name: 'Work Plans',
-                  subcategories: [
-                    { id: 'sub-work-uni', categoryId: 'cat-work', name: 'University works' },
-                    ...(c.subcategories || []).filter(
-                      (s: Subcategory) =>
-                        !['sub-work-1', 'sub-work-2', 'sub-work-3', 'sub-work-4'].includes(s.id) &&
-                        !['nicr club', 'zoom', 'web project', 'dribble shot'].includes(
-                          s.name.toLowerCase()
-                        ) &&
-                        s.name.toLowerCase() !== 'university works'
-                    ),
-                  ],
-                };
-              }
-              return c;
-            });
+          const filtered = parsed.filter(
+            (c: Category) =>
+              c.id !== 'cat-work' &&
+              c.id !== 'cat-uni' &&
+              c.id !== 'cat-eng' &&
+              c.id !== 'cat-mkt' &&
+              c.id !== 'cat-pers' &&
+              c.id !== 'cat-cyber' &&
+              c.id !== 'cat-uiux' &&
+              !['digital marketing', 'personal goals', 'work plans', 'cybersecurity', 'ui/ux'].includes(
+                c.name.toLowerCase()
+              )
+          );
 
-          const hasWorkCat = filtered.some((c: Category) => c.id === 'cat-work');
-          const finalCategories = hasWorkCat
-            ? filtered
-            : [INITIAL_CATEGORIES[0], ...filtered];
+          const hasUni = filtered.some((c: Category) => c.name.toLowerCase().includes('university'));
+          const hasEng = filtered.some((c: Category) => c.name.toLowerCase().includes('english'));
+          let finalCategories = [...filtered];
+          if (!hasUni) finalCategories.unshift(INITIAL_CATEGORIES[0]);
+          if (!hasEng) finalCategories.push(INITIAL_CATEGORIES[1]);
 
           setCategories(finalCategories);
+          await AsyncStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(finalCategories));
         } else {
-          // Check if legacy storage had categories and migrate Work Plans
-          const legacyV6 = await AsyncStorage.getItem('@smart_planner_categories_v6');
-          if (legacyV6) {
-            try {
-              const parsed = JSON.parse(legacyV6);
-              const filtered = parsed
-                .filter(
-                  (c: Category) =>
-                    c.id !== 'cat-cyber' &&
-                    c.id !== 'cat-uiux' &&
-                    !c.name.toLowerCase().includes('cyber') &&
-                    !c.name.toLowerCase().includes('ui/ux')
-                )
-                .map((c: Category) => {
-                  if (c.id === 'cat-work' || c.name.toLowerCase().includes('work')) {
-                    return {
-                      ...c,
-                      id: 'cat-work',
-                      name: 'Work Plans',
-                      subcategories: [
-                        { id: 'sub-work-uni', categoryId: 'cat-work', name: 'University works' },
-                        ...(c.subcategories || []).filter(
-                          (s: Subcategory) =>
-                            !['sub-work-1', 'sub-work-2', 'sub-work-3', 'sub-work-4'].includes(s.id) &&
-                            !['nicr club', 'zoom', 'web project', 'dribble shot'].includes(
-                              s.name.toLowerCase()
-                            ) &&
-                            s.name.toLowerCase() !== 'university works'
-                        ),
-                      ],
-                    };
-                  }
-                  return c;
-                });
-              const hasWorkCat = filtered.some((c: Category) => c.id === 'cat-work');
-              const finalCategories = hasWorkCat ? filtered : [INITIAL_CATEGORIES[0], ...filtered];
-              setCategories(finalCategories);
-              await AsyncStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(finalCategories));
-            } catch {
-              setCategories(INITIAL_CATEGORIES);
-            }
-          } else {
-            setCategories(INITIAL_CATEGORIES);
-          }
+          setCategories(INITIAL_CATEGORIES);
+          await AsyncStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(INITIAL_CATEGORIES));
         }
 
         if (storedTasks) {
@@ -397,6 +314,24 @@ export const StudyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       subcategories: subs,
     };
     saveCategories([...categories, newCategory]);
+  };
+
+  const updateCategory = (
+    categoryId: string,
+    data: { name: string; color: string; icon: string }
+  ) => {
+    const updated = categories.map((cat) => {
+      if (cat.id === categoryId) {
+        return {
+          ...cat,
+          name: data.name.trim(),
+          color: data.color,
+          icon: data.icon,
+        };
+      }
+      return cat;
+    });
+    saveCategories(updated);
   };
 
   const deleteCategory = (categoryId: string) => {
@@ -625,6 +560,7 @@ export const StudyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         colors: activeColors,
         toggleThemeMode,
         addCategory,
+        updateCategory,
         deleteCategory,
         addSubcategory,
         deleteSubcategory,

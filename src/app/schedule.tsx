@@ -33,11 +33,7 @@ export default function ScheduleScreen() {
   const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
 
   const handleBack = () => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace('/');
-    }
+    router.replace('/');
   };
 
   // Filter sessions for selected day and sort chronologically

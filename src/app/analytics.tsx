@@ -22,8 +22,7 @@ export default function AnalyticsScreen() {
 
   const [selectedRange, setSelectedRange] = useState<TimeRange>('Week');
 
-  const todayDayName = DAYS_OF_WEEK[new Date().getDay()];
-  const [activeTooltipDay, setActiveTooltipDay] = useState<string>(todayDayName);
+  const [activeTooltipLabel, setActiveTooltipLabel] = useState<string>('');
 
   // Filter logs & compute dynamic stats based on selected time range
   const rangeStats = useMemo(() => {
@@ -31,8 +30,18 @@ export default function AnalyticsScreen() {
     let filtered = focusLogs;
 
     if (selectedRange === 'Day') {
-      const todayStr = now.toISOString().split('T')[0];
-      filtered = focusLogs.filter((l) => l.timestamp && l.timestamp.startsWith(todayStr));
+      const todayYear = now.getFullYear();
+      const todayMonth = now.getMonth();
+      const todayDate = now.getDate();
+      filtered = focusLogs.filter((l) => {
+        if (!l.timestamp) return false;
+        const d = new Date(l.timestamp);
+        return (
+          d.getFullYear() === todayYear &&
+          d.getMonth() === todayMonth &&
+          d.getDate() === todayDate
+        );
+      });
     } else if (selectedRange === 'Week') {
       const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
       filtered = focusLogs.filter((l) => l.timestamp && new Date(l.timestamp) >= oneWeekAgo);
@@ -92,52 +101,205 @@ export default function AnalyticsScreen() {
     };
   }, [focusLogs, selectedRange, tasks, categories]);
 
-  // Compute actual week study hours for Sun - Sat chart
-  const weekData = useMemo(() => {
+  // Compute chart points adaptively based on selectedRange (Day, Week, Month, All Time)
+  const chartData = useMemo(() => {
     const now = new Date();
-    const currentDayOfWeek = now.getDay();
-    const startOfWeek = new Date(now);
-    startOfWeek.setDate(now.getDate() - currentDayOfWeek);
-    startOfWeek.setHours(0, 0, 0, 0);
 
-    const dayHoursMap: Record<string, number> = {
-      Sun: 0,
-      Mon: 0,
-      Tue: 0,
-      Wed: 0,
-      Thu: 0,
-      Fri: 0,
-      Sat: 0,
-    };
+    if (selectedRange === 'Day') {
+      // 7 Time slots throughout the day
+      const daySlots = [
+        { label: '6 AM', fullLabel: 'Morning (6 - 9 AM)', start: 6, end: 9 },
+        { label: '9 AM', fullLabel: 'Mid-Morning (9 AM - 12 PM)', start: 9, end: 12 },
+        { label: '12 PM', fullLabel: 'Noon (12 - 3 PM)', start: 12, end: 15 },
+        { label: '3 PM', fullLabel: 'Afternoon (3 - 6 PM)', start: 15, end: 18 },
+        { label: '6 PM', fullLabel: 'Evening (6 - 9 PM)', start: 18, end: 21 },
+        { label: '9 PM', fullLabel: 'Night (9 PM - 12 AM)', start: 21, end: 24 },
+        { label: '12 AM', fullLabel: 'Late Night (12 - 6 AM)', start: 0, end: 6 },
+      ];
+
+      const slotHours: Record<string, number> = {};
+      daySlots.forEach((s) => {
+        slotHours[s.label] = 0;
+      });
+
+      const todayYear = now.getFullYear();
+      const todayMonth = now.getMonth();
+      const todayDate = now.getDate();
+
+      focusLogs.forEach((log) => {
+        if (!log.timestamp) return;
+        const d = new Date(log.timestamp);
+        if (
+          d.getFullYear() === todayYear &&
+          d.getMonth() === todayMonth &&
+          d.getDate() === todayDate
+        ) {
+          const hour = d.getHours();
+          const targetSlot = daySlots.find((s) => hour >= s.start && hour < s.end);
+          if (targetSlot) {
+            slotHours[targetSlot.label] += (log.durationMinutes || 0) / 60;
+          }
+        }
+      });
+
+      const maxH = Math.max(...Object.values(slotHours), 0);
+
+      return daySlots.map((s) => ({
+        label: s.label,
+        fullLabel: s.fullLabel,
+        hours: Number((slotHours[s.label] || 0).toFixed(1)),
+        isPeak: maxH > 0 && slotHours[s.label] === maxH,
+      }));
+    }
+
+    if (selectedRange === 'Week') {
+      const currentDayOfWeek = now.getDay();
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - currentDayOfWeek);
+      startOfWeek.setHours(0, 0, 0, 0);
+
+      const dayHoursMap: Record<string, number> = {
+        Sun: 0,
+        Mon: 0,
+        Tue: 0,
+        Wed: 0,
+        Thu: 0,
+        Fri: 0,
+        Sat: 0,
+      };
+
+      const dayFullMap: Record<string, string> = {
+        Sun: 'Sunday',
+        Mon: 'Monday',
+        Tue: 'Tuesday',
+        Wed: 'Wednesday',
+        Thu: 'Thursday',
+        Fri: 'Friday',
+        Sat: 'Saturday',
+      };
+
+      focusLogs.forEach((log) => {
+        if (!log.timestamp) return;
+        const logDate = new Date(log.timestamp);
+        if (logDate >= startOfWeek) {
+          const dayName = DAYS_OF_WEEK[logDate.getDay()];
+          if (dayName) {
+            dayHoursMap[dayName] =
+              (dayHoursMap[dayName] || 0) + (log.durationMinutes || 0) / 60;
+          }
+        }
+      });
+
+      const maxHours = Math.max(...Object.values(dayHoursMap), 0);
+
+      return DAYS_OF_WEEK.map((day) => ({
+        label: day,
+        fullLabel: dayFullMap[day] || day,
+        hours: Number((dayHoursMap[day] || 0).toFixed(1)),
+        isPeak: maxHours > 0 && dayHoursMap[day] === maxHours,
+      }));
+    }
+
+    if (selectedRange === 'Month') {
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth();
+
+      const weeks = [
+        { label: 'W1', fullLabel: 'Week 1 (Day 1 - 7)', start: 1, end: 7 },
+        { label: 'W2', fullLabel: 'Week 2 (Day 8 - 14)', start: 8, end: 14 },
+        { label: 'W3', fullLabel: 'Week 3 (Day 15 - 21)', start: 15, end: 21 },
+        { label: 'W4', fullLabel: 'Week 4 (Day 22 - 28)', start: 22, end: 28 },
+        { label: 'W5', fullLabel: 'Week 5 (Day 29 - End)', start: 29, end: 31 },
+      ];
+
+      const weekHours: Record<string, number> = { W1: 0, W2: 0, W3: 0, W4: 0, W5: 0 };
+
+      focusLogs.forEach((log) => {
+        if (!log.timestamp) return;
+        const d = new Date(log.timestamp);
+        if (d.getFullYear() === currentYear && d.getMonth() === currentMonth) {
+          const dateNum = d.getDate();
+          const targetW = weeks.find((w) => dateNum >= w.start && dateNum <= w.end);
+          if (targetW) {
+            weekHours[targetW.label] += (log.durationMinutes || 0) / 60;
+          }
+        }
+      });
+
+      const maxH = Math.max(...Object.values(weekHours), 0);
+
+      return weeks.map((w) => ({
+        label: w.label,
+        fullLabel: w.fullLabel,
+        hours: Number((weekHours[w.label] || 0).toFixed(1)),
+        isPeak: maxH > 0 && weekHours[w.label] === maxH,
+      }));
+    }
+
+    // All Time: Last 6 months
+    const monthNames = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    const pastMonths: { label: string; fullLabel: string; year: number; month: number }[] = [];
+
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const mIdx = d.getMonth();
+      const yr = d.getFullYear();
+      pastMonths.push({
+        label: monthNames[mIdx],
+        fullLabel: `${monthNames[mIdx]} ${yr}`,
+        year: yr,
+        month: mIdx,
+      });
+    }
+
+    const monthHours: Record<string, number> = {};
+    pastMonths.forEach((m) => {
+      monthHours[m.label] = 0;
+    });
 
     focusLogs.forEach((log) => {
       if (!log.timestamp) return;
-      const logDate = new Date(log.timestamp);
-      if (logDate >= startOfWeek) {
-        const dayName = DAYS_OF_WEEK[logDate.getDay()];
-        if (dayName) {
-          dayHoursMap[dayName] =
-            (dayHoursMap[dayName] || 0) + (log.durationMinutes || 0) / 60;
-        }
+      const d = new Date(log.timestamp);
+      const targetM = pastMonths.find((m) => m.year === d.getFullYear() && m.month === d.getMonth());
+      if (targetM) {
+        monthHours[targetM.label] += (log.durationMinutes || 0) / 60;
       }
     });
 
-    const maxHours = Math.max(...Object.values(dayHoursMap), 0);
+    const maxH = Math.max(...Object.values(monthHours), 0);
 
-    return DAYS_OF_WEEK.map((day) => ({
-      day,
-      hours: Number((dayHoursMap[day] || 0).toFixed(1)),
-      isPeak: maxHours > 0 && dayHoursMap[day] === maxHours,
+    return pastMonths.map((m) => ({
+      label: m.label,
+      fullLabel: m.fullLabel,
+      hours: Number((monthHours[m.label] || 0).toFixed(1)),
+      isPeak: maxH > 0 && monthHours[m.label] === maxH,
     }));
-  }, [focusLogs]);
+  }, [focusLogs, selectedRange]);
 
-  const selectedDayData =
-    weekData.find((d) => d.day === activeTooltipDay) ||
-    weekData.find((d) => d.day === todayDayName) ||
-    weekData[0];
+  const selectedPoint = useMemo(() => {
+    if (activeTooltipLabel) {
+      const found = chartData.find((p) => p.label === activeTooltipLabel);
+      if (found) return found;
+    }
+    const peakOrFirst = chartData.find((p) => p.isPeak && p.hours > 0) || chartData[0];
+    return peakOrFirst;
+  }, [chartData, activeTooltipLabel]);
 
-  const maxDayHours = Math.max(...weekData.map((d) => d.hours), 1);
-  const yMax = maxDayHours > 4 ? Math.ceil(maxDayHours) : 4.0;
+  const maxChartHours = Math.max(...chartData.map((d) => d.hours), 1);
+  const yMax = maxChartHours > 4 ? Math.ceil(maxChartHours) : 4.0;
   const yAxisLabels = [
     yMax.toFixed(1),
     (yMax * 0.75).toFixed(1),
@@ -196,7 +358,10 @@ export default function AnalyticsScreen() {
             return (
               <Pressable
                 key={range}
-                onPress={() => setSelectedRange(range)}
+                onPress={() => {
+                  setSelectedRange(range);
+                  setActiveTooltipLabel('');
+                }}
                 style={[
                   styles.rangePill,
                   isSelected && styles.rangePillActive,
@@ -332,7 +497,13 @@ export default function AnalyticsScreen() {
           ]}>
           <View style={styles.chartTitleRow}>
             <Text style={[styles.chartCardTitle, { color: isDark ? '#FFFFFF' : '#0F172A' }]}>
-              Study Time (Hours)
+              {selectedRange === 'Day'
+                ? 'Hourly Study Time (Hours)'
+                : selectedRange === 'Week'
+                ? 'Daily Study Time (Hours)'
+                : selectedRange === 'Month'
+                ? 'Weekly Study Time (Hours)'
+                : 'Monthly Study Time (Hours)'}
             </Text>
             <Ionicons
               name="ellipsis-vertical"
@@ -341,11 +512,11 @@ export default function AnalyticsScreen() {
             />
           </View>
 
-          {/* Tooltip Bubble at active day */}
+          {/* Tooltip Bubble at active point */}
           <View style={styles.tooltipRow}>
             <View style={styles.tooltipPill}>
               <Text style={styles.tooltipText}>
-                {selectedDayData.day}: {selectedDayData.hours} Hours
+                {selectedPoint.fullLabel || selectedPoint.label}: {selectedPoint.hours} Hours
               </Text>
             </View>
           </View>
@@ -378,17 +549,17 @@ export default function AnalyticsScreen() {
                 ))}
               </View>
 
-              {/* Day Bars */}
+              {/* Data Bars */}
               <View style={styles.barsRow}>
-                {weekData.map((item) => {
-                  const isActive = activeTooltipDay === item.day;
+                {chartData.map((item) => {
+                  const isActive = selectedPoint.label === item.label;
                   const barHeightPercent =
                     yMax > 0 ? Math.min(100, Math.round((item.hours / yMax) * 100)) : 0;
 
                   return (
                     <Pressable
-                      key={item.day}
-                      onPress={() => setActiveTooltipDay(item.day)}
+                      key={item.label}
+                      onPress={() => setActiveTooltipLabel(item.label)}
                       style={styles.dayCol}>
                       {/* Bar Fill & Dot */}
                       <View style={styles.barArea}>
@@ -425,7 +596,7 @@ export default function AnalyticsScreen() {
                         />
                       </View>
 
-                      {/* Day Label */}
+                      {/* Label */}
                       <Text
                         style={[
                           styles.dayLabelText,
@@ -438,7 +609,7 @@ export default function AnalyticsScreen() {
                             fontWeight: isActive ? '700' : '500',
                           },
                         ]}>
-                        {item.day}
+                        {item.label}
                       </Text>
                     </Pressable>
                   );

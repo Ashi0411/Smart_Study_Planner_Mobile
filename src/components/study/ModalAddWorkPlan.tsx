@@ -34,7 +34,11 @@ export const ModalAddWorkPlan: React.FC<Props> = ({
   const [timeframeDays, setTimeframeDays] = useState<number>(7);
   const [intensity, setIntensity] = useState<'crash' | 'balanced' | 'light'>('balanced');
 
-  const selectedCategory = categories.find((c) => c.id === selectedCategoryId) || categories[0];
+  const effectiveCategoryId = categories.some((c) => c.id === selectedCategoryId)
+    ? selectedCategoryId
+    : categories[0]?.id || '';
+
+  const selectedCategory = categories.find((c) => c.id === effectiveCategoryId) || categories[0];
 
   const handleCategoryChange = (catId: string) => {
     setSelectedCategoryId(catId);
@@ -51,7 +55,7 @@ export const ModalAddWorkPlan: React.FC<Props> = ({
     // Save work plan without sub-plans
     addWorkPlan({
       title: title.trim(),
-      categoryId: selectedCategoryId,
+      categoryId: effectiveCategoryId,
       subcategoryId: selectedSubcategoryId,
       targetDeadline: deadlineStr,
       subPlans: [],
@@ -103,9 +107,9 @@ export const ModalAddWorkPlan: React.FC<Props> = ({
 
             {/* Category Selector */}
             <Text style={[styles.label, { color: colors.textSecondary }]}>SELECT CATEGORY</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalChips}>
+            <View style={styles.categoryChipsWrap}>
               {categories.map((cat) => {
-                const isSelected = selectedCategoryId === cat.id;
+                const isSelected = effectiveCategoryId === cat.id;
                 return (
                   <Pressable
                     key={cat.id}
@@ -119,20 +123,21 @@ export const ModalAddWorkPlan: React.FC<Props> = ({
                     ]}>
                     <Ionicons
                       name={(cat.icon as any) || 'folder'}
-                      size={14}
+                      size={16}
                       color={isSelected ? '#FFF' : cat.color}
                     />
                     <Text
                       style={[
                         styles.chipText,
-                        { color: isSelected ? '#FFF' : colors.text, fontWeight: isSelected ? '700' : '500' },
+                        { color: isSelected ? '#FFF' : colors.text, fontWeight: isSelected ? '700' : '600' },
                       ]}>
                       {cat.name}
                     </Text>
+                    {isSelected && <Ionicons name="checkmark-circle" size={15} color="#FFF" />}
                   </Pressable>
                 );
               })}
-            </ScrollView>
+            </View>
 
             {/* Subcategories (if available for selected category) */}
             {selectedCategory && selectedCategory.subcategories.length > 0 && (
@@ -334,15 +339,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginBottom: 4,
   },
+  categoryChipsWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 6,
+  },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-    marginRight: 8,
+    gap: 7,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1.5,
   },
   chipText: {
     fontSize: 13,
