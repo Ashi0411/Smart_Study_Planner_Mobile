@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useStudy } from '@/context/StudyContext';
 import { ScheduleItem } from '@/components/study/ScheduleItem';
 import { ModalAddSchedule } from '@/components/study/ModalAddSchedule';
@@ -24,11 +25,20 @@ const DAYS = [
 ];
 
 export default function ScheduleScreen() {
+  const router = useRouter();
   const { schedule, colors } = useStudy();
 
   const todayDayOfWeek = new Date().getDay();
   const [selectedDay, setSelectedDay] = useState<number>(todayDayOfWeek);
   const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
+
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/');
+    }
+  };
 
   // Filter sessions for selected day and sort chronologically
   const daySessions = schedule
@@ -41,16 +51,38 @@ export default function ScheduleScreen() {
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={styles.header}>
-        <View>
-          <Text style={[styles.title, { color: colors.text }]}>Study Plan</Text>
-          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            {daySessions.length} session{daySessions.length !== 1 ? 's' : ''} on {dayLabel}
-          </Text>
+        <View style={styles.headerLeftRow}>
+          <Pressable
+            onPress={handleBack}
+            style={({ pressed, hovered }: any) => [
+              styles.backBtn,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.cardBorder,
+              },
+              hovered && styles.backBtnHovered,
+              pressed && styles.btnPressed,
+            ]}
+            hitSlop={10}>
+            <Ionicons name="chevron-back" size={22} color={colors.text} />
+          </Pressable>
+
+          <View>
+            <Text style={[styles.title, { color: colors.text }]}>Study Plan</Text>
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+              {daySessions.length} session{daySessions.length !== 1 ? 's' : ''} on {dayLabel}
+            </Text>
+          </View>
         </View>
 
         <Pressable
           onPress={() => setIsModalVisible(true)}
-          style={[styles.addBtn, { backgroundColor: colors.primary }]}>
+          style={({ pressed, hovered }: any) => [
+            styles.addBtn,
+            { backgroundColor: colors.primary },
+            hovered && styles.addBtnHovered,
+            pressed && styles.btnPressed,
+          ]}>
           <Ionicons name="add" size={20} color="#FFF" />
           <Text style={styles.addBtnText}>Add Session</Text>
         </Pressable>
@@ -134,8 +166,31 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 16,
   },
+  headerLeftRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  backBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  backBtnHovered: {
+    transform: [{ translateY: -1.5 }],
+    shadowOpacity: 0.15,
+  },
   title: {
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: '800',
     letterSpacing: -0.5,
   },
@@ -150,6 +205,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 9,
     borderRadius: 20,
+  },
+  addBtnHovered: {
+    transform: [{ translateY: -1.5 }],
+    shadowOpacity: 0.25,
+  },
+  btnPressed: {
+    transform: [{ translateY: 1 }],
+    opacity: 0.9,
   },
   addBtnText: {
     color: '#FFF',
