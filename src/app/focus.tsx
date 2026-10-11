@@ -204,17 +204,39 @@ export default function FocusScreen() {
                   <View
                     style={[
                       styles.configBadge,
-                      { backgroundColor: isConfigured ? '#ECFDF5' : '#FEF3C7' },
+                      { backgroundColor: isConfigured ? '#ECFDF5' : '#EFF6FF' },
                     ]}>
                     <Text
                       style={[
                         styles.configBadgeText,
-                        { color: isConfigured ? '#047857' : '#B45309' },
+                        { color: isConfigured ? '#047857' : '#1D4ED8' },
                       ]}>
-                      {isConfigured ? 'Supabase Live' : 'Demo Account'}
+                      {isConfigured ? 'Supabase Live Cloud' : 'Local Device Account'}
                     </Text>
                   </View>
                 </View>
+
+                {/* Cloud Setup Notice if running locally */}
+                {!isConfigured && (
+                  <View
+                    style={[
+                      styles.setupNoticeBox,
+                      {
+                        backgroundColor: isDark ? '#1E293B' : '#EFF6FF',
+                        borderColor: '#93C5FD',
+                      },
+                    ]}>
+                    <View style={styles.setupNoticeHeader}>
+                      <Ionicons name="cloud-offline-outline" size={18} color="#3B82F6" />
+                      <Text style={[styles.setupNoticeTitle, { color: isDark ? '#93C5FD' : '#1E40AF' }]}>
+                        Connect Real Supabase Cloud
+                      </Text>
+                    </View>
+                    <Text style={[styles.setupNoticeText, { color: isDark ? '#CBD5E1' : '#334155' }]}>
+                      To sync your account with your real Supabase PostgreSQL database, add your project URL &amp; Anon Key into the .env file.
+                    </Text>
+                  </View>
+                )}
 
                 {/* Cloud Security Architecture Info */}
                 <View
@@ -590,6 +612,27 @@ const styles = StyleSheet.create({
   configBadgeText: {
     fontSize: 11,
     fontWeight: '700',
+  },
+  setupNoticeBox: {
+    alignSelf: 'stretch',
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 16,
+    gap: 6,
+  },
+  setupNoticeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  setupNoticeTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  setupNoticeText: {
+    fontSize: 12,
+    lineHeight: 17,
   },
   securityCard: {
     alignSelf: 'stretch',

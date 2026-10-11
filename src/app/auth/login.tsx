@@ -136,6 +136,20 @@ export default function LoginScreen() {
             </View>
           )}
 
+          {/* Notice if keys are not set */}
+          {!isConfigured && (
+            <View
+              style={[
+                styles.noticeBanner,
+                { backgroundColor: isDark ? '#1F2937' : '#EFF6FF', borderColor: '#BFDBFE' },
+              ]}>
+              <Ionicons name="information-circle" size={18} color="#3B82F6" />
+              <Text style={[styles.noticeBannerText, { color: isDark ? '#93C5FD' : '#1E40AF' }]}>
+                Offline Mode: Supabase keys not set in .env. When you sign in, your account is saved securely on this device.
+              </Text>
+            </View>
+          )}
+
           {/* Form */}
           <View style={styles.formContainer}>
             {/* Email Field */}
@@ -369,6 +383,21 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
     flex: 1,
+  },
+  noticeBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1,
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  noticeBannerText: {
+    fontSize: 12,
+    fontWeight: '500',
+    flex: 1,
+    lineHeight: 17,
   },
   formContainer: {
     gap: 14,

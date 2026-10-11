@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import {
@@ -62,7 +63,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           createdAt: data.created_at,
         });
       } else {
-        // Fallback default profile if table row hasn't been created yet
         setProfile({
           id: userId,
           email: userEmail,
@@ -82,7 +82,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     async function initSession() {
       if (!isSupabaseConfigured) {
-        setIsLoading(false);
+        try {
+          const stored = await AsyncStorage.getItem('@smart_planner_active_user');
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            // Purge old demo placeholder name if present
+            if (parsed.fullName === 'Alex Morgan' || parsed.email === 'student@smartplanner.io') {
+              await AsyncStorage.removeItem('@smart_planner_active_user');
+              setProfile(null);
+            } else {
+              setProfile(parsed);
+            }
+          }
+        } catch (e) {
+          console.warn('Error reading local active user', e);
+        } finally {
+          setIsLoading(false);
+        }
         return;
       }
 
@@ -154,8 +170,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     if (!isSupabaseConfigured) {
-      // Demo fallback if keys are missing
-      demoLogin();
+      // Offline/Local Mode: Use the user's actual entered email and look up their saved name
+      let userFullName = '';
+      try {
+        const storedAccountsJson = await AsyncStorage.getItem('@smart_planner_local_accounts');
+        if (storedAccountsJson) {
+          const accounts = JSON.parse(storedAccountsJson);
+          const found = accounts.find((a: { email: string; fullName: string }) => a.email.toLowerCase() === emailValidation.normalized);
+          if (found) {
+            userFullName = found.fullName;
+          }
+        }
+      } catch (e) {
+        console.warn('Error reading local accounts', e);
+      }
+
+      if (!userFullName) {
+        const prefix = emailValidation.normalized.split('@')[0];
+        userFullName = prefix.charAt(0).toUpperCase() + prefix.slice(1);
+      }
+
+      const localProfile: UserProfile = {
+        id: 'usr-local-' + Date.now(),
+        email: emailValidation.normalized,
+        fullName: userFullName,
+        createdAt: new Date().toISOString(),
+      };
+
+      setProfile(localProfile);
+      await AsyncStorage.setItem('@smart_planner_active_user', JSON.stringify(localProfile));
+      bruteForceLimiter.reset(emailValidation.normalized);
       return { success: true };
     }
 
@@ -217,12 +261,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     if (!isSupabaseConfigured) {
-      // Local fallback for demo
-      setProfile({
-        id: 'usr-demo-' + Date.now(),
+      // Save account locally so user's exact name & email are displayed
+      const localProfile: UserProfile = {
+        id: 'usr-local-' + Date.now(),
         email: emailValidation.normalized,
         fullName: sanitizedName,
-      });
+        createdAt: new Date().toISOString(),
+      };
+
+      try {
+        const storedAccountsJson = await AsyncStorage.getItem('@smart_planner_local_accounts');
+        const accounts = storedAccountsJson ? JSON.parse(storedAccountsJson) : [];
+        const filtered = accounts.filter((a: { email: string }) => a.email !== emailValidation.normalized);
+        filtered.push({ email: emailValidation.normalized, fullName: sanitizedName });
+        await AsyncStorage.setItem('@smart_planner_local_accounts', JSON.stringify(filtered));
+      } catch (e) {
+        console.warn('Error saving local account', e);
+      }
+
+      setProfile(localProfile);
+      await AsyncStorage.setItem('@smart_planner_active_user', JSON.stringify(localProfile));
       return { success: true };
     }
 
@@ -272,6 +330,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (isSupabaseConfigured) {
       await supabase.auth.signOut();
     }
+    try {
+      await AsyncStorage.removeItem('@smart_planner_active_user');
+    } catch (e) {
+      console.warn('Error removing active user', e);
+    }
     setUser(null);
     setSession(null);
     setProfile(null);
@@ -306,6 +369,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const updated = { ...profile, ...data };
     setProfile(updated);
+    try {
+      await AsyncStorage.setItem('@smart_planner_active_user', JSON.stringify(updated));
+    } catch (e) {
+      console.warn('Error saving updated profile locally', e);
+    }
 
     if (isSupabaseConfigured && user) {
       try {
@@ -325,13 +393,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // Demo user login for testing before Supabase keys are configured
-  const demoLogin = () => {
-    setProfile({
+  const demoLogin = async () => {
+    const demoProfile: UserProfile = {
       id: 'demo-user-1',
       email: 'student@smartplanner.io',
-      fullName: 'Alex Morgan',
+      fullName: 'Demo Student',
       createdAt: new Date().toISOString(),
-    });
+    };
+    setProfile(demoProfile);
+    try {
+      await AsyncStorage.setItem('@smart_planner_active_user', JSON.stringify(demoProfile));
+    } catch (e) {
+      console.warn('Error storing demo user', e);
+    }
   };
 
   return (
