@@ -9,12 +9,9 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useStudy } from '@/context/StudyContext';
-import { SubPlan } from '@/types/study';
-import { generateAISubPlans } from '@/services/aiPlanGenerator';
 
 interface Props {
   visible: boolean;
@@ -27,7 +24,7 @@ export const ModalAddWorkPlan: React.FC<Props> = ({
   onClose,
   defaultCategoryId,
 }) => {
-  const { categories, addWorkPlan, addTask, colors } = useStudy();
+  const { categories, addWorkPlan, colors } = useStudy();
 
   const [title, setTitle] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState(
@@ -36,58 +33,12 @@ export const ModalAddWorkPlan: React.FC<Props> = ({
   const [selectedSubcategoryId, setSelectedSubcategoryId] = useState<string | undefined>(undefined);
   const [timeframeDays, setTimeframeDays] = useState<number>(7);
   const [intensity, setIntensity] = useState<'crash' | 'balanced' | 'light'>('balanced');
-  const [isGenerating, setIsGenerating] = useState<boolean>(false);
-  const [subPlans, setSubPlans] = useState<SubPlan[]>([]);
-  const [autoAddToTasks, setAutoAddToTasks] = useState<boolean>(true);
-
-  // Manual subplan input
-  const [newSubPlanTitle, setNewSubPlanTitle] = useState('');
 
   const selectedCategory = categories.find((c) => c.id === selectedCategoryId) || categories[0];
-  const selectedSubcategory = selectedCategory?.subcategories.find(
-    (s) => s.id === selectedSubcategoryId
-  );
 
   const handleCategoryChange = (catId: string) => {
     setSelectedCategoryId(catId);
     setSelectedSubcategoryId(undefined); // reset subcategory on category change
-  };
-
-  const handleGenerateAI = () => {
-    if (!title.trim() || !selectedCategory) return;
-
-    setIsGenerating(true);
-    setTimeout(() => {
-      const generated = generateAISubPlans({
-        goalTitle: title.trim(),
-        categoryName: selectedCategory.name,
-        subcategoryName: selectedSubcategory?.name,
-        timeframeDays,
-        intensity,
-      });
-      setSubPlans(generated);
-      setIsGenerating(false);
-    }, 600);
-  };
-
-  const handleAddManualSubPlan = () => {
-    if (!newSubPlanTitle.trim()) return;
-    const targetDate = new Date();
-    targetDate.setDate(targetDate.getDate() + timeframeDays);
-
-    const manualItem: SubPlan = {
-      id: `manual-${Date.now()}`,
-      title: newSubPlanTitle.trim(),
-      estimatedMinutes: 45,
-      completed: false,
-      dueDate: targetDate.toISOString().split('T')[0],
-    };
-    setSubPlans([...subPlans, manualItem]);
-    setNewSubPlanTitle('');
-  };
-
-  const handleRemoveSubPlan = (subPlanId: string) => {
-    setSubPlans(subPlans.filter((sp) => sp.id !== subPlanId));
   };
 
   const handleSavePlan = () => {
@@ -97,32 +48,17 @@ export const ModalAddWorkPlan: React.FC<Props> = ({
     deadlineDate.setDate(deadlineDate.getDate() + timeframeDays);
     const deadlineStr = deadlineDate.toISOString().split('T')[0];
 
-    // Save work plan
+    // Save work plan without sub-plans
     addWorkPlan({
       title: title.trim(),
       categoryId: selectedCategoryId,
       subcategoryId: selectedSubcategoryId,
       targetDeadline: deadlineStr,
-      subPlans,
+      subPlans: [],
     });
-
-    // Optionally auto-add into tasks list
-    if (autoAddToTasks && subPlans.length > 0) {
-      subPlans.forEach((sp) => {
-        addTask({
-          title: `${title.trim()}: ${sp.title}`,
-          categoryId: selectedCategoryId,
-          subcategoryId: selectedSubcategoryId,
-          dueDate: sp.dueDate || deadlineStr,
-          priority: 'high',
-          estimatedMinutes: sp.estimatedMinutes,
-        });
-      });
-    }
 
     // Reset & close
     setTitle('');
-    setSubPlans([]);
     setSelectedSubcategoryId(undefined);
     onClose();
   };
@@ -138,7 +74,7 @@ export const ModalAddWorkPlan: React.FC<Props> = ({
             <View style={styles.headerTitleRow}>
               <View style={[styles.aiBadge, { backgroundColor: colors.primaryLight }]}>
                 <Ionicons name="sparkles" size={14} color={colors.primary} />
-                <Text style={[styles.aiBadgeText, { color: colors.primary }]}>AI ASSISTANT</Text>
+                <Text style={[styles.aiBadgeText, { color: colors.primary }]}>WORK PLAN</Text>
               </View>
               <Text style={[styles.heading, { color: colors.text }]}>Add Custom Work Plan</Text>
             </View>
@@ -308,139 +244,6 @@ export const ModalAddWorkPlan: React.FC<Props> = ({
                 </Pressable>
               ))}
             </View>
-
-            {/* AI Generator Button */}
-            <Pressable
-              onPress={handleGenerateAI}
-              disabled={!title.trim() || isGenerating}
-              style={[
-                styles.aiGenBtn,
-                {
-                  backgroundColor: title.trim() ? colors.primary : colors.cardBorder,
-                  opacity: title.trim() ? 1 : 0.6,
-                },
-              ]}>
-              {isGenerating ? (
-                <ActivityIndicator size="small" color="#FFF" />
-              ) : (
-                <Ionicons name="sparkles" size={18} color="#FFF" />
-              )}
-              <Text style={styles.aiGenBtnText}>
-                {isGenerating
-                  ? 'AI Bot generating structured sub-plans...'
-                  : '✨ Generate Sub-Plans with AI Bot'}
-              </Text>
-            </Pressable>
-
-            {/* Sub-Plans List */}
-            {subPlans.length > 0 && (
-              <View style={styles.subPlansWrapper}>
-                <View style={styles.subPlansHeaderRow}>
-                  <Text style={[styles.subPlansHeading, { color: colors.text }]}>
-                    Generated Sub-Plans ({subPlans.length})
-                  </Text>
-                  <Text style={[styles.subPlansHelper, { color: colors.textSecondary }]}>
-                    Milestones & phases
-                  </Text>
-                </View>
-
-                {subPlans.map((sp, index) => (
-                  <View
-                    key={sp.id}
-                    style={[
-                      styles.subPlanCard,
-                      { backgroundColor: colors.backgroundElement, borderColor: colors.cardBorder },
-                    ]}>
-                    <View style={styles.subPlanHeader}>
-                      <View style={[styles.stepCircle, { backgroundColor: selectedCategory?.color || colors.primary }]}>
-                        <Text style={styles.stepNum}>{index + 1}</Text>
-                      </View>
-                      <Text style={[styles.subPlanTitle, { color: colors.text }]}>{sp.title}</Text>
-                      <Pressable onPress={() => handleRemoveSubPlan(sp.id)} hitSlop={6}>
-                        <Ionicons name="close" size={16} color={colors.textSecondary} />
-                      </Pressable>
-                    </View>
-
-                    {sp.description ? (
-                      <Text style={[styles.subPlanDesc, { color: colors.textSecondary }]}>
-                        {sp.description}
-                      </Text>
-                    ) : null}
-
-                    <View style={styles.subPlanMeta}>
-                      <View style={styles.metaBadge}>
-                        <Ionicons name="time-outline" size={12} color={colors.textSecondary} />
-                        <Text style={[styles.metaText, { color: colors.textSecondary }]}>
-                          {sp.estimatedMinutes} mins
-                        </Text>
-                      </View>
-
-                      {sp.dueDate && (
-                        <View style={styles.metaBadge}>
-                          <Ionicons name="calendar-outline" size={12} color={colors.textSecondary} />
-                          <Text style={[styles.metaText, { color: colors.textSecondary }]}>
-                            Target: {sp.dueDate}
-                          </Text>
-                        </View>
-                      )}
-                    </View>
-                  </View>
-                ))}
-              </View>
-            )}
-
-            {/* Manual Sub-plan input */}
-            <Text style={[styles.label, { color: colors.textSecondary, marginTop: 16 }]}>
-              OR ADD CUSTOM SUB-PLAN
-            </Text>
-            <View style={styles.manualRow}>
-              <TextInput
-                style={[
-                  styles.manualInput,
-                  {
-                    backgroundColor: colors.backgroundElement,
-                    color: colors.text,
-                    borderColor: colors.cardBorder,
-                  },
-                ]}
-                placeholder="e.g. Complete chapter summary notes"
-                placeholderTextColor={colors.textSecondary}
-                value={newSubPlanTitle}
-                onChangeText={setNewSubPlanTitle}
-              />
-              <Pressable
-                onPress={handleAddManualSubPlan}
-                disabled={!newSubPlanTitle.trim()}
-                style={[
-                  styles.manualAddBtn,
-                  {
-                    backgroundColor: newSubPlanTitle.trim() ? colors.primary : colors.cardBorder,
-                  },
-                ]}>
-                <Ionicons name="add" size={20} color="#FFF" />
-              </Pressable>
-            </View>
-
-            {/* Auto-add into Daily Tasks Checkbox */}
-            {subPlans.length > 0 && (
-              <Pressable
-                onPress={() => setAutoAddToTasks(!autoAddToTasks)}
-                style={styles.checkboxRow}>
-                <View
-                  style={[
-                    styles.checkbox,
-                    {
-                      borderColor: autoAddToTasks ? colors.primary : colors.textSecondary,
-                      backgroundColor: autoAddToTasks ? colors.primary : 'transparent',
-                    },
-                  ]}>
-                  {autoAddToTasks && <Ionicons name="checkmark" size={14} color="#FFF" />}
-                </View>
-                <Text style={[styles.checkboxLabel, { color: colors.text }]}>
-                  Automatically add these sub-plans into my Daily Tasks checklist
-                </Text>
-              </Pressable>
-            )}
           </ScrollView>
 
           {/* Footer Buttons */}
@@ -458,9 +261,7 @@ export const ModalAddWorkPlan: React.FC<Props> = ({
                 styles.btn,
                 { backgroundColor: title.trim() ? selectedCategory?.color || colors.primary : colors.cardBorder },
               ]}>
-              <Text style={[styles.btnText, { color: '#FFF' }]}>
-                Save Work Plan ({subPlans.length} sub-plans)
-              </Text>
+              <Text style={[styles.btnText, { color: '#FFF' }]}>Save Work Plan</Text>
             </Pressable>
           </View>
         </View>
@@ -574,122 +375,6 @@ const styles = StyleSheet.create({
   timePillText: {
     fontSize: 12,
     fontWeight: '600',
-  },
-  aiGenBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 13,
-    borderRadius: 14,
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  aiGenBtnText: {
-    color: '#FFF',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  subPlansWrapper: {
-    marginTop: 14,
-    gap: 8,
-  },
-  subPlansHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'baseline',
-    marginBottom: 4,
-  },
-  subPlansHeading: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  subPlansHelper: {
-    fontSize: 11,
-  },
-  subPlanCard: {
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    gap: 6,
-  },
-  subPlanHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepCircle: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stepNum: {
-    color: '#FFF',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  subPlanTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    flex: 1,
-  },
-  subPlanDesc: {
-    fontSize: 12,
-    lineHeight: 16,
-  },
-  subPlanMeta: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 2,
-  },
-  metaBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  metaText: {
-    fontSize: 11,
-  },
-  manualRow: {
-    flexDirection: 'row',
-    gap: 8,
-    alignItems: 'center',
-  },
-  manualInput: {
-    flex: 1,
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 13,
-  },
-  manualAddBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkboxRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 14,
-    gap: 10,
-  },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 6,
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkboxLabel: {
-    fontSize: 12,
-    fontWeight: '500',
-    flex: 1,
   },
   footer: {
     flexDirection: 'row',

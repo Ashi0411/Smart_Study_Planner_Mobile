@@ -310,12 +310,14 @@ export default function HomeScreen() {
                     setIsTaskModalVisible(true);
                   }
                 }}
-                style={[
+                style={({ pressed, hovered }: any) => [
                   styles.planCard,
                   {
                     backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
                     borderColor: isDark ? '#334155' : '#F1F5F9',
                   },
+                  hovered && styles.planCardHovered,
+                  pressed && styles.btnPressed,
                 ]}>
                 {/* Left Tinted Icon Container */}
                 <View style={[styles.planIconBox, { backgroundColor: item.iconBg }]}>
@@ -375,8 +377,7 @@ export default function HomeScreen() {
             ))}
           </View>
         ) : (
-          <Pressable
-            onPress={() => setIsTaskModalVisible(true)}
+          <View
             style={[
               styles.emptyPlanCard,
               {
@@ -385,7 +386,7 @@ export default function HomeScreen() {
               },
             ]}>
             <View style={styles.emptyPlanIconCircle}>
-              <Ionicons name="calendar-outline" size={28} color="#8B5CF6" />
+              <Ionicons name="calendar-outline" size={28} color="#6D28D9" />
             </View>
             <Text style={[styles.emptyPlanTitle, { color: isDark ? '#FFFFFF' : '#0F172A' }]}>
               {isViewingToday && calendarMode === 'daily'
@@ -397,11 +398,23 @@ export default function HomeScreen() {
                 ? 'Tap here to create university assignments, exam preparations, or daily revision plans.'
                 : `Tap here to create a study plan or university task for this date.`}
             </Text>
-            <View style={styles.emptyPlanActionBtn}>
-              <Ionicons name="add-circle" size={18} color="#FFFFFF" />
-              <Text style={styles.emptyPlanActionBtnText}>Create Plan</Text>
-            </View>
-          </Pressable>
+            <Pressable
+              onPress={() => setIsTaskModalVisible(true)}
+              style={({ pressed, hovered }: any) => [
+                styles.emptyPlanActionBtn,
+                (hovered || pressed) && styles.emptyPlanActionBtnHovered,
+                pressed && styles.btnPressed,
+              ]}>
+              <LinearGradient
+                colors={['#6D28D9', '#4F46E5']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.emptyPlanActionGradient}>
+                <Ionicons name="add-circle" size={18} color="#FFFFFF" />
+                <Text style={styles.emptyPlanActionBtnText}>Create Plan</Text>
+              </LinearGradient>
+            </Pressable>
+          </View>
         )}
 
         {/* Action Buttons: Create Category & Create Work Plan */}
@@ -409,16 +422,29 @@ export default function HomeScreen() {
           {/* Create Category Button */}
           <Pressable
             onPress={() => setIsCategoryModalVisible(true)}
-            style={({ pressed }) => [
+            style={({ pressed, hovered }: any) => [
               styles.createCategoryBtn,
               {
-                backgroundColor: isDark ? '#1E1B4B' : '#F5F3FF',
-                borderColor: isDark ? '#3730A3' : '#E0E7FF',
+                backgroundColor: isDark
+                  ? (hovered ? '#2E1065' : '#1E1B4B')
+                  : (hovered ? '#E0E7FF' : '#EEF2FF'),
+                borderColor: isDark
+                  ? (hovered ? '#818CF8' : '#6366F1')
+                  : (hovered ? '#4F46E5' : '#6366F1'),
               },
-              pressed && { opacity: 0.85, transform: [{ scale: 0.99 }] },
+              (hovered || pressed) && styles.createCategoryBtnHovered,
+              pressed && styles.btnPressed,
             ]}>
-            <Ionicons name="folder-outline" size={18} color={isDark ? '#C7D2FE' : '#6366F1'} />
-            <Text style={[styles.createCategoryText, { color: isDark ? '#C7D2FE' : '#6366F1' }]}>
+            <Ionicons
+              name="folder-outline"
+              size={18}
+              color={isDark ? '#C7D2FE' : '#4338CA'}
+            />
+            <Text
+              style={[
+                styles.createCategoryText,
+                { color: isDark ? '#E0E7FF' : '#3730A3' },
+              ]}>
               Create Category
             </Text>
           </Pressable>
@@ -426,12 +452,13 @@ export default function HomeScreen() {
           {/* Create Work Plan Button */}
           <Pressable
             onPress={() => setIsWorkPlanModalVisible(true)}
-            style={({ pressed }) => [
+            style={({ pressed, hovered }: any) => [
               styles.createWorkPlanBtn,
-              pressed && { opacity: 0.9, transform: [{ scale: 0.99 }] },
+              (hovered || pressed) && styles.createWorkPlanBtnHovered,
+              pressed && styles.btnPressed,
             ]}>
             <LinearGradient
-              colors={['#8B5CF6', '#6366F1']}
+              colors={['#6D28D9', '#4338CA']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.createWorkPlanGradient}>
@@ -803,13 +830,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   emptyPlanActionBtn: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#4F46E5',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  emptyPlanActionGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#8B5CF6',
-    paddingHorizontal: 18,
-    paddingVertical: 9,
-    borderRadius: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
     gap: 6,
+  },
+  emptyPlanActionBtnHovered: {
+    transform: [{ translateY: -3 }, { scale: 1.03 }],
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.45,
+    shadowRadius: 10,
+    elevation: 6,
   },
   emptyPlanActionBtnText: {
     color: '#FFFFFF',
@@ -819,7 +860,7 @@ const styles = StyleSheet.create({
   actionButtonsContainer: {
     marginTop: 8,
     marginBottom: 20,
-    gap: 10,
+    gap: 12,
   },
   createCategoryBtn: {
     flexDirection: 'row',
@@ -830,6 +871,18 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderWidth: 1.5,
     gap: 8,
+    shadowColor: '#4F46E5',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  createCategoryBtnHovered: {
+    transform: [{ translateY: -3.5 }, { scale: 1.015 }],
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 6,
   },
   createCategoryText: {
     fontSize: 15,
@@ -839,17 +892,24 @@ const styles = StyleSheet.create({
   createWorkPlanBtn: {
     borderRadius: 18,
     overflow: 'hidden',
-    shadowColor: '#8B5CF6',
+    shadowColor: '#3730A3',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.35,
     shadowRadius: 8,
-    elevation: 3,
+    elevation: 4,
+  },
+  createWorkPlanBtnHovered: {
+    transform: [{ translateY: -4 }, { scale: 1.02 }],
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.5,
+    shadowRadius: 16,
+    elevation: 8,
   },
   createWorkPlanGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
+    paddingVertical: 15,
     paddingHorizontal: 20,
     gap: 8,
   },
@@ -858,6 +918,18 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     letterSpacing: -0.2,
+  },
+  planCardHovered: {
+    transform: [{ translateY: -2.5 }],
+    shadowColor: '#6366F1',
+    shadowOpacity: 0.15,
+    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  btnPressed: {
+    transform: [{ translateY: 1 }, { scale: 0.985 }],
+    opacity: 0.9,
   },
   modalOverlay: {
     flex: 1,
