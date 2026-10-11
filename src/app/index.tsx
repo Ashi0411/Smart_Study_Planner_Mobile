@@ -32,7 +32,6 @@ export default function HomeScreen() {
     categories,
     tasks,
     themeMode,
-    colors,
     toggleTask,
   } = useStudy();
 
@@ -42,7 +41,6 @@ export default function HomeScreen() {
   const [isCategoryModalVisible, setIsCategoryModalVisible] = useState(false);
   const [isAccountModalVisible, setIsAccountModalVisible] = useState(false);
   const [isWelcomeModalVisible, setIsWelcomeModalVisible] = useState(false);
-  const [isAiTipModalVisible, setIsAiTipModalVisible] = useState(false);
 
   // Calendar view modes: daily | monthly | yearly
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<Date>(() => new Date());
@@ -406,82 +404,22 @@ export default function HomeScreen() {
           </Pressable>
         )}
 
-        {/* StudyZen AI Tip Card */}
-        <Pressable
-          onPress={() => setIsAiTipModalVisible(true)}
-          style={[
-            styles.aiTipCard,
-            {
-              backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-              borderColor: isDark ? '#334155' : '#F1F5F9',
-            },
-          ]}>
-          {/* Left AI Mascot Avatar */}
-          <View style={styles.aiMascotCircle}>
-            <Image
-              source={require('@/assets/images/study_ai_mascot.jpg')}
-              style={styles.aiMascotImage}
-              resizeMode="cover"
-            />
-          </View>
-
-          {/* Middle Text */}
-          <View style={styles.aiTipTextCol}>
-            <Text style={[styles.aiTipHeading, { color: isDark ? '#FFFFFF' : '#0F172A' }]}>
-              StudyZen AI Tip
-            </Text>
-            <Text
-              style={[styles.aiTipSub, { color: isDark ? '#94A3B8' : '#64748B' }]}
-              numberOfLines={2}>
-              You study best between 9-11AM. Let&apos;s plan your deep focus session!
-            </Text>
-          </View>
-
-          {/* Right Chevron */}
-          <Ionicons
-            name="chevron-forward"
-            size={18}
-            color={isDark ? '#64748B' : '#94A3B8'}
-          />
-        </Pressable>
-
-        {/* Action Pills: + Work Plan, + Category, + Task */}
-        <View style={styles.quickManagerBar}>
+        {/* Create Work Plan Button */}
+        <View style={styles.createWorkPlanContainer}>
           <Pressable
             onPress={() => setIsWorkPlanModalVisible(true)}
-            style={[styles.managerPillBtn, { backgroundColor: '#6366F1' }]}>
-            <Ionicons name="sparkles" size={15} color="#FFF" />
-            <Text style={styles.managerPillBtnText}>+ Work Plan</Text>
-          </Pressable>
-
-          <Pressable
-            onPress={() => setIsCategoryModalVisible(true)}
-            style={[
-              styles.managerPillBtnSecondary,
-              {
-                backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                borderColor: isDark ? '#334155' : '#E2E8F0',
-              },
+            style={({ pressed }) => [
+              styles.createWorkPlanBtn,
+              pressed && { opacity: 0.9, transform: [{ scale: 0.99 }] },
             ]}>
-            <Ionicons name="folder-outline" size={15} color={colors.text} />
-            <Text style={[styles.managerPillBtnTextSecondary, { color: colors.text }]}>
-              + Category
-            </Text>
-          </Pressable>
-
-          <Pressable
-            onPress={() => setIsTaskModalVisible(true)}
-            style={[
-              styles.managerPillBtnSecondary,
-              {
-                backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                borderColor: isDark ? '#334155' : '#E2E8F0',
-              },
-            ]}>
-            <Ionicons name="add-circle-outline" size={15} color={colors.text} />
-            <Text style={[styles.managerPillBtnTextSecondary, { color: colors.text }]}>
-              + Task
-            </Text>
+            <LinearGradient
+              colors={['#8B5CF6', '#6366F1']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.createWorkPlanGradient}>
+              <Ionicons name="sparkles" size={18} color="#FFFFFF" />
+              <Text style={styles.createWorkPlanText}>Create Work Plan</Text>
+            </LinearGradient>
           </Pressable>
         </View>
 
@@ -545,49 +483,7 @@ export default function HomeScreen() {
         </View>
       </Modal>
 
-      {/* AI Tip Modal */}
-      <Modal
-        visible={isAiTipModalVisible}
-        animationType="fade"
-        transparent
-        onRequestClose={() => setIsAiTipModalVisible(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.aiTipModalCard, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF' }]}>
-            <View style={styles.aiTipModalHeader}>
-              <Image
-                source={require('@/assets/images/study_ai_mascot.jpg')}
-                style={styles.aiTipModalMascot}
-              />
-              <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={[styles.aiTipModalTitle, { color: isDark ? '#FFF' : '#0F172A' }]}>
-                  StudyZen AI Coach
-                </Text>
-                <Text style={{ fontSize: 12, color: '#6366F1', fontWeight: '600' }}>
-                  Personalized Study Intelligence
-                </Text>
-              </View>
-              <Pressable onPress={() => setIsAiTipModalVisible(false)}>
-                <Ionicons name="close-circle" size={24} color={isDark ? '#64748B' : '#94A3B8'} />
-              </Pressable>
-            </View>
 
-            <Text style={[styles.aiTipModalBody, { color: isDark ? '#CBD5E1' : '#334155' }]}>
-              💡 <Text style={{ fontWeight: '700' }}>Deep Focus Window Detected:</Text> Your brain retention and cognitive speed peak between 9:00 AM and 11:30 AM.
-              {'\n\n'}
-              🎯 Recommendation: Schedule your hardest topics (like Data Structures or University Works) during this morning slot with 25-minute Pomodoro intervals.
-            </Text>
-
-            <Pressable
-              onPress={() => {
-                setIsAiTipModalVisible(false);
-                router.push('/focus');
-              }}
-              style={styles.startFocusBtn}>
-              <Text style={styles.startFocusBtnText}>Start Deep Focus Timer ⏱️</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
 
       {/* Function Modals */}
       <ModalAddTask
@@ -902,79 +798,32 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
   },
-  aiTipCard: {
-    borderRadius: 22,
-    padding: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
+  createWorkPlanContainer: {
+    marginTop: 6,
     marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 6,
-    elevation: 1,
   },
-  aiMascotCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  createWorkPlanBtn: {
+    borderRadius: 18,
     overflow: 'hidden',
-    borderWidth: 1.5,
-    borderColor: '#6366F1',
-    marginRight: 12,
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  aiMascotImage: {
-    width: '100%',
-    height: '100%',
-  },
-  aiTipTextCol: {
-    flex: 1,
-    paddingRight: 8,
-  },
-  aiTipHeading: {
-    fontSize: 14,
-    fontWeight: '800',
-    marginBottom: 2,
-  },
-  aiTipSub: {
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: '500',
-  },
-  quickManagerBar: {
+  createWorkPlanGradient: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
     gap: 8,
-    marginBottom: 10,
   },
-  managerPillBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: 14,
-  },
-  managerPillBtnText: {
+  createWorkPlanText: {
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: 15,
     fontWeight: '700',
-  },
-  managerPillBtnSecondary: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: 14,
-    borderWidth: 1,
-  },
-  managerPillBtnTextSecondary: {
-    fontSize: 13,
-    fontWeight: '600',
+    letterSpacing: -0.2,
   },
   modalOverlay: {
     flex: 1,
@@ -1055,40 +904,5 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.35,
     shadowRadius: 12,
     elevation: 8,
-  },
-  aiTipModalCard: {
-    width: '100%',
-    borderRadius: 24,
-    padding: 22,
-  },
-  aiTipModalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  aiTipModalMascot: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-  },
-  aiTipModalTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  aiTipModalBody: {
-    fontSize: 14,
-    lineHeight: 22,
-    marginBottom: 20,
-  },
-  startFocusBtn: {
-    backgroundColor: '#6366F1',
-    paddingVertical: 12,
-    borderRadius: 16,
-    alignItems: 'center',
-  },
-  startFocusBtnText: {
-    color: '#FFF',
-    fontSize: 14,
-    fontWeight: '700',
   },
 });
