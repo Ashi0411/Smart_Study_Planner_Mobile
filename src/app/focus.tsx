@@ -28,7 +28,7 @@ const MODE_DURATIONS: Record<FocusMode, number> = {
 export default function FocusScreen() {
   const router = useRouter();
   const { categories, logFocusSession, todayFocusMinutes, streakDays, colors, themeMode, toggleThemeMode } = useStudy();
-  const { user, profile, isConfigured, signOut, resetPassword, updateProfile } = useAuth();
+  const { user, profile, isConfigured, signOut, resetPassword, updateProfile, isLoading } = useAuth();
   const isDark = themeMode === 'dark';
 
   const [activeTab, setActiveTab] = useState<'profile' | 'timer'>('profile');
@@ -231,7 +231,18 @@ export default function FocusScreen() {
         {activeTab === 'profile' ? (
           /* USER ACCOUNT & SUPABASE CLOUD VIEW */
           <View style={styles.profileSection}>
-            {user || profile ? (
+            {isLoading ? (
+              <View
+                style={[
+                  styles.loadingProfileCard,
+                  { backgroundColor: colors.card, borderColor: colors.cardBorder },
+                ]}>
+                <ActivityIndicator size="large" color="#8B5CF6" />
+                <Text style={[styles.loadingProfileText, { color: colors.textSecondary }]}>
+                  Loading account profile...
+                </Text>
+              </View>
+            ) : user || profile ? (
               <View style={styles.userCard}>
                 {/* Avatar with Camera Badge */}
                 <View style={styles.avatarWrapper}>
@@ -803,6 +814,20 @@ const styles = StyleSheet.create({
     color: '#EF4444',
     fontSize: 14,
     fontWeight: '700',
+  },
+  loadingProfileCard: {
+    borderRadius: 20,
+    borderWidth: 1,
+    paddingVertical: 48,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  loadingProfileText: {
+    marginTop: 12,
+    fontSize: 14,
+    fontWeight: '500',
   },
   loggedOutCard: {
     alignItems: 'center',

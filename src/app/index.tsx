@@ -21,50 +21,7 @@ import { ModalAddCategory } from '@/components/study/ModalAddCategory';
 import { AccountModal } from '@/components/auth/AccountModal';
 import { StudyTask } from '@/types/study';
 
-// Reference study items from StudyZen design
-interface PlanItem {
-  id: string;
-  title: string;
-  duration: string;
-  type: string;
-  progress: number;
-  iconName: keyof typeof Ionicons.glyphMap;
-  iconBg: string;
-  iconColor: string;
-}
 
-const DEFAULT_PLANS: PlanItem[] = [
-  {
-    id: 'plan-ds',
-    title: 'Data Structures',
-    duration: '1h 30m',
-    type: 'Study',
-    progress: 60,
-    iconName: 'book-outline',
-    iconBg: '#EDE9FE',
-    iconColor: '#6366F1',
-  },
-  {
-    id: 'plan-dm',
-    title: 'Discrete mathematics',
-    duration: '45m',
-    type: 'Review',
-    progress: 0,
-    iconName: 'calculator-outline',
-    iconBg: '#E0F2FE',
-    iconColor: '#0284C7',
-  },
-  {
-    id: 'plan-ps',
-    title: 'Problem Solving',
-    duration: '1h',
-    type: 'Practice',
-    progress: 30,
-    iconName: 'bulb-outline',
-    iconBg: '#DCFCE7',
-    iconColor: '#10B981',
-  },
-];
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -97,7 +54,7 @@ export default function HomeScreen() {
   }, []);
 
   // Display user name
-  const displayName = profile?.fullName || 'Abdullah Al Mamun';
+  const displayName = profile?.fullName || 'Student';
 
   // Helper for dynamic tasks
   const getTaskCategoryInfo = useCallback((task: StudyTask) => {
@@ -110,7 +67,7 @@ export default function HomeScreen() {
     };
   }, [categories]);
 
-  // Convert tasks or fallback to reference plan items
+  // Convert tasks - return empty array when no user tasks exist
   const displayPlanItems = useMemo(() => {
     if (tasks.length > 0) {
       return tasks.slice(0, 5).map((t, index) => {
@@ -135,8 +92,31 @@ export default function HomeScreen() {
         };
       });
     }
-    return DEFAULT_PLANS;
+    return [];
   }, [tasks, getTaskCategoryInfo]);
+
+  // Dynamic Featured Banner calculation
+  const featuredStats = useMemo(() => {
+    if (tasks.length > 0) {
+      const completedCount = tasks.filter((t) => t.completed).length;
+      const progressPercent = Math.round((completedCount / tasks.length) * 100);
+      const activeTask = tasks.find((t) => !t.completed) || tasks[0];
+      return {
+        title: activeTask.title,
+        subtitle: `Today's Focus: ${completedCount} of ${tasks.length} Plans\nCompleted Successfully`,
+        progress: progressPercent,
+        btnText: 'View All Plans',
+        action: () => router.push('/tasks'),
+      };
+    }
+    return {
+      title: 'Study & Work Plans',
+      subtitle: `Organize university works & study plans\nTrack your daily focus sessions`,
+      progress: 0,
+      btnText: '+ Add First Plan',
+      action: () => setIsTaskModalVisible(true),
+    };
+  }, [tasks, router]);
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC' }]}>
@@ -211,27 +191,29 @@ export default function HomeScreen() {
         </View>
 
         {/* Featured Banner Card: Data Structures (Purple Gradient + 3D Books & Cup) */}
+        {/* Featured Banner Card (Dynamic & Purple Gradient + 3D Books & Cup) */}
         <LinearGradient
           colors={['#6366F1', '#7C3AED', '#8B5CF6']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.featuredCard}>
           <View style={styles.featuredLeftCol}>
-            <Text style={styles.featuredTitle}>Data Structures</Text>
-            <Text style={styles.featuredSub}>
-              Today&apos;s Focus: 2 of 5 Sessions{'\n'}Complete Successfully
-            </Text>
+            <Text style={styles.featuredTitle}>{featuredStats.title}</Text>
+            <Text style={styles.featuredSub}>{featuredStats.subtitle}</Text>
 
             {/* Mini Progress Track */}
             <View style={styles.featuredProgressTrack}>
-              <View style={[styles.featuredProgressFill, { width: '40%' }]} />
+              <View
+                style={[
+                  styles.featuredProgressFill,
+                  { width: `${Math.max(5, featuredStats.progress)}%` },
+                ]}
+              />
             </View>
 
-            {/* Learn More Pill Button */}
-            <Pressable
-              onPress={() => router.push('/tasks')}
-              style={styles.learnMoreBtn}>
-              <Text style={styles.learnMoreBtnText}>Learn more</Text>
+            {/* Pill Button */}
+            <Pressable onPress={featuredStats.action} style={styles.learnMoreBtn}>
+              <Text style={styles.learnMoreBtnText}>{featuredStats.btnText}</Text>
             </Pressable>
           </View>
 
@@ -255,79 +237,108 @@ export default function HomeScreen() {
           </Pressable>
         </View>
 
-        {/* Vertical List of Today's Plan Items */}
-        <View style={styles.planItemsContainer}>
-          {displayPlanItems.map((item) => (
-            <Pressable
-              key={item.id}
-              onPress={() => {
-                if ('isUserTask' in item && item.isUserTask) {
-                  toggleTask(item.id);
-                } else {
-                  setIsTaskModalVisible(true);
-                }
-              }}
-              style={[
-                styles.planCard,
-                {
-                  backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                  borderColor: isDark ? '#334155' : '#F1F5F9',
-                },
-              ]}>
-              {/* Left Tinted Icon Container */}
-              <View style={[styles.planIconBox, { backgroundColor: item.iconBg }]}>
-                <Ionicons name={item.iconName} size={22} color={item.iconColor} />
-              </View>
-
-              {/* Middle Info */}
-              <View style={styles.planCardMiddle}>
-                <Text
-                  style={[
-                    styles.planCardTitle,
-                    { color: isDark ? '#FFFFFF' : '#0F172A' },
-                    'completed' in item && Boolean((item as any).completed) ? styles.titleCompleted : null,
-                  ]}
-                  numberOfLines={1}>
-                  {item.title}
-                </Text>
-                <View style={styles.planMetaRow}>
-                  <Ionicons
-                    name="time-outline"
-                    size={13}
-                    color={isDark ? '#94A3B8' : '#64748B'}
-                  />
-                  <Text style={[styles.planMetaText, { color: isDark ? '#94A3B8' : '#64748B' }]}>
-                    {item.duration}
-                  </Text>
-                  <Text style={[styles.planMetaDot, { color: isDark ? '#64748B' : '#CBD5E1' }]}>
-                    •
-                  </Text>
-                  <Text style={[styles.planMetaText, { color: isDark ? '#94A3B8' : '#64748B' }]}>
-                    {item.type}
-                  </Text>
+        {/* Vertical List of Today's Plan Items or Empty State */}
+        {displayPlanItems.length > 0 ? (
+          <View style={styles.planItemsContainer}>
+            {displayPlanItems.map((item) => (
+              <Pressable
+                key={item.id}
+                onPress={() => {
+                  if ('isUserTask' in item && item.isUserTask) {
+                    toggleTask(item.id);
+                  } else {
+                    setIsTaskModalVisible(true);
+                  }
+                }}
+                style={[
+                  styles.planCard,
+                  {
+                    backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                    borderColor: isDark ? '#334155' : '#F1F5F9',
+                  },
+                ]}>
+                {/* Left Tinted Icon Container */}
+                <View style={[styles.planIconBox, { backgroundColor: item.iconBg }]}>
+                  <Ionicons name={item.iconName} size={22} color={item.iconColor} />
                 </View>
-              </View>
 
-              {/* Right Circular Progress Gauge */}
-              <View style={styles.gaugeContainer}>
-                <View
-                  style={[
-                    styles.gaugeOuterRing,
-                    {
-                      borderColor: isDark ? '#334155' : '#E2E8F0',
-                      borderTopColor: item.progress > 0 ? '#6366F1' : isDark ? '#334155' : '#E2E8F0',
-                      borderRightColor:
-                        item.progress >= 50 ? '#6366F1' : isDark ? '#334155' : '#E2E8F0',
-                    },
-                  ]}>
-                  <Text style={[styles.gaugeText, { color: isDark ? '#E2E8F0' : '#1E293B' }]}>
-                    {item.progress}%
+                {/* Middle Info */}
+                <View style={styles.planCardMiddle}>
+                  <Text
+                    style={[
+                      styles.planCardTitle,
+                      { color: isDark ? '#FFFFFF' : '#0F172A' },
+                      'completed' in item && Boolean((item as any).completed)
+                        ? styles.titleCompleted
+                        : null,
+                    ]}
+                    numberOfLines={1}>
+                    {item.title}
                   </Text>
+                  <View style={styles.planMetaRow}>
+                    <Ionicons
+                      name="time-outline"
+                      size={13}
+                      color={isDark ? '#94A3B8' : '#64748B'}
+                    />
+                    <Text style={[styles.planMetaText, { color: isDark ? '#94A3B8' : '#64748B' }]}>
+                      {item.duration}
+                    </Text>
+                    <Text style={[styles.planMetaDot, { color: isDark ? '#64748B' : '#CBD5E1' }]}>
+                      •
+                    </Text>
+                    <Text style={[styles.planMetaText, { color: isDark ? '#94A3B8' : '#64748B' }]}>
+                      {item.type}
+                    </Text>
+                  </View>
                 </View>
-              </View>
-            </Pressable>
-          ))}
-        </View>
+
+                {/* Right Circular Progress Gauge */}
+                <View style={styles.gaugeContainer}>
+                  <View
+                    style={[
+                      styles.gaugeOuterRing,
+                      {
+                        borderColor: isDark ? '#334155' : '#E2E8F0',
+                        borderTopColor:
+                          item.progress > 0 ? '#6366F1' : isDark ? '#334155' : '#E2E8F0',
+                        borderRightColor:
+                          item.progress >= 50 ? '#6366F1' : isDark ? '#334155' : '#E2E8F0',
+                      },
+                    ]}>
+                    <Text style={[styles.gaugeText, { color: isDark ? '#E2E8F0' : '#1E293B' }]}>
+                      {item.progress}%
+                    </Text>
+                  </View>
+                </View>
+              </Pressable>
+            ))}
+          </View>
+        ) : (
+          <Pressable
+            onPress={() => setIsTaskModalVisible(true)}
+            style={[
+              styles.emptyPlanCard,
+              {
+                backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                borderColor: isDark ? '#334155' : '#EDE9FE',
+              },
+            ]}>
+            <View style={styles.emptyPlanIconCircle}>
+              <Ionicons name="calendar-outline" size={28} color="#8B5CF6" />
+            </View>
+            <Text style={[styles.emptyPlanTitle, { color: isDark ? '#FFFFFF' : '#0F172A' }]}>
+              No Study Plans Yet
+            </Text>
+            <Text style={[styles.emptyPlanSubtitle, { color: isDark ? '#94A3B8' : '#64748B' }]}>
+              Tap here to create university assignments, exam preparations, or daily revision plans.
+            </Text>
+            <View style={styles.emptyPlanActionBtn}>
+              <Ionicons name="add-circle" size={18} color="#FFFFFF" />
+              <Text style={styles.emptyPlanActionBtnText}>Create Plan</Text>
+            </View>
+          </Pressable>
+        )}
 
         {/* StudyZen AI Tip Card */}
         <Pressable
@@ -777,6 +788,52 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '800',
     transform: [{ rotate: '45deg' }],
+  },
+  emptyPlanCard: {
+    borderRadius: 22,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    paddingVertical: 26,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  emptyPlanIconCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#EDE9FE',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  emptyPlanTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  emptyPlanSubtitle: {
+    fontSize: 13,
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: 16,
+    paddingHorizontal: 12,
+  },
+  emptyPlanActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#8B5CF6',
+    paddingHorizontal: 18,
+    paddingVertical: 9,
+    borderRadius: 20,
+    gap: 6,
+  },
+  emptyPlanActionBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
   },
   aiTipCard: {
     borderRadius: 22,

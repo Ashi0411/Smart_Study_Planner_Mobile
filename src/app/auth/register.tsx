@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,7 +23,7 @@ import { evaluatePasswordStrength } from '@/utils/security';
 export default function RegisterScreen() {
   const router = useRouter();
   const { signUp } = useAuth();
-  const { colors, themeMode } = useStudy();
+  const { themeMode } = useStudy();
   const isDark = themeMode === 'dark';
 
   const [fullName, setFullName] = useState('');
@@ -55,7 +56,7 @@ export default function RegisterScreen() {
     }
 
     if (password !== confirmPassword) {
-      setErrorMessage('Passwords do not match. Please re-enter.');
+      setErrorMessage('Passwords do not match. Please verify your confirmation password.');
       return;
     }
 
@@ -70,10 +71,10 @@ export default function RegisterScreen() {
             'Account created! We sent a confirmation link to your email. Please verify to activate your account.'
           );
         } else {
-          setSuccessMessage('Account registered successfully! Redirecting...');
+          setSuccessMessage('Account registered successfully! Welcome to StudyZen!');
           setTimeout(() => {
             router.replace('/');
-          }, 1200);
+          }, 1000);
         }
       } else {
         setErrorMessage(result.error || 'Failed to create account.');
@@ -84,41 +85,72 @@ export default function RegisterScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC' }]}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboardView}>
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}>
-          {/* Header */}
+          {/* Header Bar */}
           <View style={styles.topBar}>
             <Pressable
               hitSlop={12}
               onPress={() => router.back()}
               style={[
                 styles.backButton,
-                { backgroundColor: colors.card, borderColor: colors.cardBorder },
+                {
+                  backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                  borderColor: isDark ? '#334155' : '#E2E8F0',
+                },
               ]}>
-              <Ionicons name="arrow-back" size={20} color={colors.text} />
+              <Ionicons name="arrow-back" size={20} color={isDark ? '#F8FAFC' : '#1E293B'} />
             </Pressable>
-            <Text style={[styles.topBarTitle, { color: colors.textSecondary }]}>
-              New Account
-            </Text>
+            <View style={styles.appBrandPill}>
+              <Ionicons name="sparkles" size={14} color="#8B5CF6" />
+              <Text style={styles.appBrandText}>StudyZen</Text>
+            </View>
             <View style={{ width: 40 }} />
           </View>
 
-          {/* Hero Branding */}
+          {/* Hero Branding with 3D Mascot */}
           <View style={styles.brandHero}>
-            <LinearGradient
-              colors={['#8B5CF6', '#C084FC']}
-              style={styles.logoBadge}>
-              <Ionicons name="person-add" size={30} color="#FFFFFF" />
-            </LinearGradient>
-            <Text style={[styles.heroHeading, { color: colors.text }]}>Create Account</Text>
-            <Text style={[styles.heroSubheading, { color: colors.textSecondary }]}>
-              Join Smart Life &amp; Learning Planner with encrypted cloud sync &amp; multi-device backup
+            <View style={styles.mascotHalo}>
+              <Image
+                source={require('@/assets/images/study_ai_mascot.jpg')}
+                style={styles.mascotImage}
+                resizeMode="cover"
+              />
+              <View style={styles.sparkleBadge}>
+                <Ionicons name="sparkles" size={12} color="#FFFFFF" />
+              </View>
+            </View>
+
+            <Text style={[styles.heroHeading, { color: isDark ? '#FFFFFF' : '#0F172A' }]}>
+              Create Account
             </Text>
+            <Text style={[styles.heroSubheading, { color: isDark ? '#94A3B8' : '#64748B' }]}>
+              Join StudyZen to organize university tasks, schedules &amp; study habits
+            </Text>
+
+            {/* Segmented Auth Switcher */}
+            <View
+              style={[
+                styles.switchContainer,
+                {
+                  backgroundColor: isDark ? '#1E293B' : '#F1F5F9',
+                  borderColor: isDark ? '#334155' : '#E2E8F0',
+                },
+              ]}>
+              <Pressable onPress={() => router.push('/auth/login')} style={styles.switchTab}>
+                <Text style={[styles.switchText, { color: isDark ? '#94A3B8' : '#64748B' }]}>
+                  Sign In
+                </Text>
+              </Pressable>
+              <View style={[styles.switchTab, styles.switchTabActive]}>
+                <Text style={styles.switchTextActive}>Create Account</Text>
+              </View>
+            </View>
           </View>
 
           {/* Status Banners */}
@@ -136,20 +168,32 @@ export default function RegisterScreen() {
             </View>
           )}
 
-          {/* Input Form */}
-          <View style={styles.formContainer}>
+          {/* Form Card */}
+          <View
+            style={[
+              styles.formCard,
+              {
+                backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                borderColor: isDark ? '#334155' : '#E2E8F0',
+              },
+            ]}>
             {/* Full Name */}
-            <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>FULL NAME</Text>
+            <Text style={[styles.inputLabel, { color: isDark ? '#CBD5E1' : '#475569' }]}>
+              FULL NAME
+            </Text>
             <View
               style={[
                 styles.inputWrapper,
-                { backgroundColor: colors.card, borderColor: colors.cardBorder },
+                {
+                  backgroundColor: isDark ? '#0F172A' : '#F8FAFC',
+                  borderColor: isDark ? '#334155' : '#E2E8F0',
+                },
               ]}>
-              <Ionicons name="person-outline" size={20} color="#8B5CF6" />
+              <Ionicons name="person-outline" size={19} color="#8B5CF6" />
               <TextInput
-                style={[styles.inputField, { color: colors.text }]}
-                placeholder="e.g. Alex Morgan"
-                placeholderTextColor={colors.textSecondary}
+                style={[styles.inputField, { color: isDark ? '#FFFFFF' : '#0F172A' }]}
+                placeholder="e.g. John Doe"
+                placeholderTextColor={isDark ? '#64748B' : '#94A3B8'}
                 value={fullName}
                 onChangeText={setFullName}
                 autoCorrect={false}
@@ -157,19 +201,22 @@ export default function RegisterScreen() {
             </View>
 
             {/* Email Address */}
-            <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
+            <Text style={[styles.inputLabel, { color: isDark ? '#CBD5E1' : '#475569', marginTop: 12 }]}>
               EMAIL ADDRESS
             </Text>
             <View
               style={[
                 styles.inputWrapper,
-                { backgroundColor: colors.card, borderColor: colors.cardBorder },
+                {
+                  backgroundColor: isDark ? '#0F172A' : '#F8FAFC',
+                  borderColor: isDark ? '#334155' : '#E2E8F0',
+                },
               ]}>
-              <Ionicons name="mail-outline" size={20} color="#8B5CF6" />
+              <Ionicons name="mail-outline" size={19} color="#8B5CF6" />
               <TextInput
-                style={[styles.inputField, { color: colors.text }]}
-                placeholder="name@example.com"
-                placeholderTextColor={colors.textSecondary}
+                style={[styles.inputField, { color: isDark ? '#FFFFFF' : '#0F172A' }]}
+                placeholder="student@example.com"
+                placeholderTextColor={isDark ? '#64748B' : '#94A3B8'}
                 value={email}
                 onChangeText={setEmail}
                 autoCapitalize="none"
@@ -179,17 +226,22 @@ export default function RegisterScreen() {
             </View>
 
             {/* Password */}
-            <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>PASSWORD</Text>
+            <Text style={[styles.inputLabel, { color: isDark ? '#CBD5E1' : '#475569', marginTop: 12 }]}>
+              PASSWORD
+            </Text>
             <View
               style={[
                 styles.inputWrapper,
-                { backgroundColor: colors.card, borderColor: colors.cardBorder },
+                {
+                  backgroundColor: isDark ? '#0F172A' : '#F8FAFC',
+                  borderColor: isDark ? '#334155' : '#E2E8F0',
+                },
               ]}>
-              <Ionicons name="lock-closed-outline" size={20} color="#8B5CF6" />
+              <Ionicons name="lock-closed-outline" size={19} color="#8B5CF6" />
               <TextInput
-                style={[styles.inputField, { color: colors.text }]}
+                style={[styles.inputField, { color: isDark ? '#FFFFFF' : '#0F172A' }]}
                 placeholder="Minimum 8 characters"
-                placeholderTextColor={colors.textSecondary}
+                placeholderTextColor={isDark ? '#64748B' : '#94A3B8'}
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!isPasswordVisible}
@@ -200,8 +252,8 @@ export default function RegisterScreen() {
                 hitSlop={8}>
                 <Ionicons
                   name={isPasswordVisible ? 'eye-off-outline' : 'eye-outline'}
-                  size={20}
-                  color={colors.textSecondary}
+                  size={19}
+                  color={isDark ? '#64748B' : '#94A3B8'}
                 />
               </Pressable>
             </View>
@@ -210,19 +262,22 @@ export default function RegisterScreen() {
             <PasswordStrengthMeter password={password} />
 
             {/* Confirm Password */}
-            <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
+            <Text style={[styles.inputLabel, { color: isDark ? '#CBD5E1' : '#475569', marginTop: 12 }]}>
               CONFIRM PASSWORD
             </Text>
             <View
               style={[
                 styles.inputWrapper,
-                { backgroundColor: colors.card, borderColor: colors.cardBorder },
+                {
+                  backgroundColor: isDark ? '#0F172A' : '#F8FAFC',
+                  borderColor: isDark ? '#334155' : '#E2E8F0',
+                },
               ]}>
-              <Ionicons name="shield-checkmark-outline" size={20} color="#8B5CF6" />
+              <Ionicons name="shield-checkmark-outline" size={19} color="#8B5CF6" />
               <TextInput
-                style={[styles.inputField, { color: colors.text }]}
+                style={[styles.inputField, { color: isDark ? '#FFFFFF' : '#0F172A' }]}
                 placeholder="Re-enter your password"
-                placeholderTextColor={colors.textSecondary}
+                placeholderTextColor={isDark ? '#64748B' : '#94A3B8'}
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 secureTextEntry={!isPasswordVisible}
@@ -235,7 +290,7 @@ export default function RegisterScreen() {
                       ? 'checkmark-circle'
                       : 'close-circle'
                   }
-                  size={20}
+                  size={19}
                   color={
                     password === confirmPassword && password.length >= 8
                       ? '#10B981'
@@ -251,11 +306,11 @@ export default function RegisterScreen() {
               disabled={isLoading}
               style={({ pressed }) => [
                 styles.submitButton,
-                pressed && { opacity: 0.9 },
+                pressed && { opacity: 0.9, transform: [{ scale: 0.99 }] },
                 isLoading && { opacity: 0.7 },
               ]}>
               <LinearGradient
-                colors={['#8B5CF6', '#7C3AED']}
+                colors={['#6366F1', '#7C3AED']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.gradientBtnContent}>
@@ -264,7 +319,7 @@ export default function RegisterScreen() {
                 ) : (
                   <>
                     <Text style={styles.submitButtonText}>Create Account</Text>
-                    <Ionicons name="checkmark-circle-outline" size={20} color="#FFFFFF" />
+                    <Ionicons name="checkmark-circle-outline" size={19} color="#FFFFFF" />
                   </>
                 )}
               </LinearGradient>
@@ -274,17 +329,20 @@ export default function RegisterScreen() {
             <View
               style={[
                 styles.guaranteeBox,
-                { backgroundColor: isDark ? '#1F2937' : '#F9FAFB', borderColor: colors.cardBorder },
+                {
+                  backgroundColor: isDark ? '#0F172A' : '#F5F3FF',
+                  borderColor: isDark ? '#334155' : '#EDE9FE',
+                },
               ]}>
-              <Ionicons name="shield-outline" size={16} color="#8B5CF6" />
-              <Text style={[styles.guaranteeText, { color: colors.textSecondary }]}>
-                Protected by Supabase PostgreSQL Row Level Security (RLS) and encrypted JWT session tokens.
+              <Ionicons name="shield-checkmark" size={16} color="#8B5CF6" />
+              <Text style={[styles.guaranteeText, { color: isDark ? '#94A3B8' : '#6B7280' }]}>
+                End-to-end security: Protected by encrypted storage &amp; cloud authentication.
               </Text>
             </View>
 
             {/* Footer Navigation */}
             <View style={styles.footerRow}>
-              <Text style={[styles.footerText, { color: colors.textSecondary }]}>
+              <Text style={[styles.footerText, { color: isDark ? '#94A3B8' : '#64748B' }]}>
                 Already have an account?
               </Text>
               <Pressable onPress={() => router.push('/auth/login')} hitSlop={8}>
@@ -306,122 +364,195 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 22,
-    paddingTop: 12,
+    paddingHorizontal: 20,
+    paddingTop: 10,
     paddingBottom: 40,
   },
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 18,
+    marginBottom: 16,
   },
   backButton: {
     width: 40,
     height: 40,
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  topBarTitle: {
-    fontSize: 14,
-    fontWeight: '600',
+  appBrandPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#EDE9FE',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 16,
+  },
+  appBrandText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#6366F1',
   },
   brandHero: {
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 18,
   },
-  logoBadge: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+  mascotHalo: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    borderWidth: 3,
+    borderColor: '#C084FC',
+    overflow: 'hidden',
+    position: 'relative',
+    marginBottom: 10,
+    backgroundColor: '#EDE9FE',
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  mascotImage: {
+    width: '100%',
+    height: '100%',
+  },
+  sparkleBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: '#8B5CF6',
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 14,
-    shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
-    elevation: 8,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
   },
   heroHeading: {
     fontSize: 24,
     fontWeight: '800',
-    letterSpacing: -0.4,
     marginBottom: 6,
+    letterSpacing: -0.4,
   },
   heroSubheading: {
     fontSize: 13,
     textAlign: 'center',
     lineHeight: 19,
     paddingHorizontal: 16,
+    marginBottom: 16,
+  },
+  switchContainer: {
+    flexDirection: 'row',
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 3,
+    width: '100%',
+    maxWidth: 320,
+  },
+  switchTab: {
+    flex: 1,
+    paddingVertical: 9,
+    alignItems: 'center',
+    borderRadius: 11,
+  },
+  switchTabActive: {
+    backgroundColor: '#8B5CF6',
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  switchTextActive: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  switchText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
   errorBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
     backgroundColor: '#FEF2F2',
     borderWidth: 1,
-    borderColor: '#FCA5A5',
+    borderColor: '#FECACA',
+    borderRadius: 14,
     padding: 12,
-    borderRadius: 12,
     marginBottom: 14,
+    gap: 8,
   },
   errorBannerText: {
-    color: '#B91C1C',
+    flex: 1,
+    color: '#DC2626',
     fontSize: 13,
     fontWeight: '500',
-    flex: 1,
+    lineHeight: 18,
   },
   successBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
     backgroundColor: '#ECFDF5',
     borderWidth: 1,
     borderColor: '#A7F3D0',
+    borderRadius: 14,
     padding: 12,
-    borderRadius: 12,
     marginBottom: 14,
+    gap: 8,
   },
   successBannerText: {
-    color: '#047857',
+    flex: 1,
+    color: '#059669',
     fontSize: 13,
     fontWeight: '500',
-    flex: 1,
+    lineHeight: 18,
   },
-  formContainer: {
-    gap: 12,
+  formCard: {
+    borderRadius: 24,
+    borderWidth: 1,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    elevation: 2,
   },
   inputLabel: {
     fontSize: 11,
     fontWeight: '700',
-    letterSpacing: 0.5,
+    letterSpacing: 0.6,
+    marginBottom: 7,
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderRadius: 14,
+    borderRadius: 16,
     paddingHorizontal: 14,
-    paddingVertical: 12,
+    height: 50,
     gap: 10,
+    marginBottom: 6,
   },
   inputField: {
     flex: 1,
-    fontSize: 15,
-    padding: 0,
+    fontSize: 14,
+    fontWeight: '500',
   },
   submitButton: {
-    marginTop: 8,
     borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#8B5CF6',
+    marginTop: 18,
+    shadowColor: '#6366F1',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.28,
+    shadowOpacity: 0.25,
     shadowRadius: 8,
-    elevation: 4,
+    elevation: 3,
   },
   gradientBtnContent: {
     flexDirection: 'row',
@@ -432,35 +563,36 @@ const styles = StyleSheet.create({
   },
   submitButtonText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
   },
   guaranteeBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    borderRadius: 14,
     borderWidth: 1,
-    padding: 12,
-    borderRadius: 12,
-    marginTop: 4,
+    padding: 11,
+    marginTop: 14,
+    gap: 8,
   },
   guaranteeText: {
-    fontSize: 11,
-    lineHeight: 16,
     flex: 1,
+    fontSize: 11.5,
+    lineHeight: 16,
+    fontWeight: '500',
   },
   footerRow: {
     flexDirection: 'row',
-    justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 14,
+    justifyContent: 'center',
+    marginTop: 18,
   },
   footerText: {
-    fontSize: 14,
+    fontSize: 13,
   },
   footerLink: {
-    color: '#8B5CF6',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
+    color: '#6366F1',
   },
 });

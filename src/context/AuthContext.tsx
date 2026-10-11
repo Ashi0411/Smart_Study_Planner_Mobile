@@ -120,13 +120,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Initialize session on mount
   useEffect(() => {
+    let authListenerSubscription: { unsubscribe: () => void } | null = null;
+
     async function initSession() {
-      // 1. Instantly load locally cached profile/avatar so UI never flashes empty
+      // 1. Instantly load locally cached profile/avatar so UI never flashes empty or logged out
       try {
         const stored = await AsyncStorage.getItem('@smart_planner_active_user');
         if (stored) {
           const parsed = JSON.parse(stored);
-          if (parsed.fullName !== 'Alex Morgan' && parsed.email !== 'student@smartplanner.io') {
+          if (parsed && (parsed.email || parsed.fullName)) {
             setProfile(parsed);
           }
         } else {
@@ -167,37 +169,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } finally {
         setIsLoading(false);
       }
+
+      // Listen to real-time auth state changes ONLY if Supabase is actually configured
+      const { data: listener } = supabase.auth.onAuthStateChange(
+        async (event, newSession) => {
+          setSession(newSession);
+          setUser(newSession?.user ?? null);
+
+          if (newSession?.user) {
+            await fetchProfile(
+              newSession.user.id,
+              newSession.user.email || '',
+              newSession.user.user_metadata?.full_name,
+              newSession.user.user_metadata?.avatar_url
+            );
+          } else if (event === 'SIGNED_OUT') {
+            // Explicit sign-out event from Supabase
+            setUser(null);
+            setSession(null);
+            setProfile(null);
+          }
+        }
+      );
+      authListenerSubscription = listener.subscription;
     }
 
     initSession();
 
-    // Listen to real-time auth state changes
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (_event, newSession) => {
-        setSession(newSession);
-        setUser(newSession?.user ?? null);
-
-        if (newSession?.user) {
-          await fetchProfile(
-            newSession.user.id,
-            newSession.user.email || '',
-            newSession.user.user_metadata?.full_name,
-            newSession.user.user_metadata?.avatar_url
-          );
-        } else if (!newSession) {
-          // If no session from Supabase, check local storage
-          const stored = await AsyncStorage.getItem('@smart_planner_active_user');
-          if (stored) {
-            setProfile(JSON.parse(stored));
-          } else {
-            setProfile(null);
-          }
-        }
-      }
-    );
-
     return () => {
-      authListener.subscription.unsubscribe();
+      if (authListenerSubscription) {
+        authListenerSubscription.unsubscribe();
+      }
     };
   }, [fetchProfile]);
 
@@ -279,6 +281,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       bruteForceLimiter.reset(emailValidation.normalized);
       setSession(data.session);
       setUser(data.user);
+      if (data.user) {
+        await fetchProfile(
+          data.user.id,
+          data.user.email || '',
+          data.user.user_metadata?.full_name,
+          data.user.user_metadata?.avatar_url
+        );
+      }
       return { success: true };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'An unexpected error occurred.';

@@ -24,7 +24,7 @@ interface Props {
 
 export const AccountModal: React.FC<Props> = ({ visible, onClose }) => {
   const router = useRouter();
-  const { user, profile, isConfigured, signOut, resetPassword, updateProfile } = useAuth();
+  const { user, profile, isConfigured, signOut, resetPassword, updateProfile, isLoading: isAuthLoading } = useAuth();
   const { colors, themeMode, toggleThemeMode, todayFocusMinutes, streakDays } = useStudy();
   const isDark = themeMode === 'dark';
 
@@ -131,7 +131,14 @@ export const AccountModal: React.FC<Props> = ({ visible, onClose }) => {
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.body}>
-            {user || profile ? (
+            {isAuthLoading ? (
+              <View style={{ paddingVertical: 48, alignItems: 'center' }}>
+                <ActivityIndicator size="large" color="#8B5CF6" />
+                <Text style={{ marginTop: 12, color: colors.textSecondary, fontSize: 14 }}>
+                  Loading profile...
+                </Text>
+              </View>
+            ) : user || profile ? (
               /* Logged In View */
               <View style={styles.loggedInSection}>
                 {/* Avatar with Camera Badge */}
