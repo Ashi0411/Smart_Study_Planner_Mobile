@@ -17,9 +17,10 @@ import { Priority } from '@/types/study';
 interface Props {
   visible: boolean;
   onClose: () => void;
+  initialDueDate?: string;
 }
 
-export const ModalAddTask: React.FC<Props> = ({ visible, onClose }) => {
+export const ModalAddTask: React.FC<Props> = ({ visible, onClose, initialDueDate }) => {
   const { categories, addTask, colors } = useStudy();
 
   const [title, setTitle] = useState('');
@@ -44,7 +45,8 @@ export const ModalAddTask: React.FC<Props> = ({ visible, onClose }) => {
     };
   });
 
-  const [dueDate, setDueDate] = useState<string>(() => dateOptions.todayStr);
+  const [selectedDueDate, setSelectedDueDate] = useState<string | null>(null);
+  const dueDate = selectedDueDate ?? (initialDueDate || dateOptions.todayStr);
 
   const handleSubmit = () => {
     if (!title.trim()) return;
@@ -58,6 +60,7 @@ export const ModalAddTask: React.FC<Props> = ({ visible, onClose }) => {
     });
     setTitle('');
     setSelectedSubcategoryId(undefined);
+    setSelectedDueDate(null);
     onClose();
   };
 
@@ -202,7 +205,7 @@ export const ModalAddTask: React.FC<Props> = ({ visible, onClose }) => {
                 return (
                   <Pressable
                     key={item.label}
-                    onPress={() => setDueDate(item.date)}
+                    onPress={() => setSelectedDueDate(item.date)}
                     style={[
                       styles.pill,
                       {
@@ -250,7 +253,10 @@ export const ModalAddTask: React.FC<Props> = ({ visible, onClose }) => {
           {/* Buttons */}
           <View style={styles.footer}>
             <Pressable
-              onPress={onClose}
+              onPress={() => {
+                setSelectedDueDate(null);
+                onClose();
+              }}
               style={[styles.btn, styles.cancelBtn, { borderColor: colors.cardBorder }]}>
               <Text style={[styles.btnText, { color: colors.textSecondary }]}>Cancel</Text>
             </Pressable>

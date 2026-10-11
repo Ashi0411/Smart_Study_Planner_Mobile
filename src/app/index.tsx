@@ -20,6 +20,7 @@ import { ModalAddWorkPlan } from '@/components/study/ModalAddWorkPlan';
 import { ModalAddCategory } from '@/components/study/ModalAddCategory';
 import { AccountModal } from '@/components/auth/AccountModal';
 import { StudyTask } from '@/types/study';
+import { StudyCalendarCard, CalendarMode } from '@/components/study/StudyCalendarCard';
 
 
 
@@ -42,6 +43,10 @@ export default function HomeScreen() {
   const [isAccountModalVisible, setIsAccountModalVisible] = useState(false);
   const [isWelcomeModalVisible, setIsWelcomeModalVisible] = useState(false);
   const [isAiTipModalVisible, setIsAiTipModalVisible] = useState(false);
+
+  // Calendar view modes: daily | monthly | yearly
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState<Date>(() => new Date());
+  const [calendarMode, setCalendarMode] = useState<CalendarMode>('daily');
 
   const isDark = themeMode === 'dark';
 
@@ -67,33 +72,80 @@ export default function HomeScreen() {
     };
   }, [categories]);
 
-  // Convert tasks - return empty array when no user tasks exist
-  const displayPlanItems = useMemo(() => {
-    if (tasks.length > 0) {
-      return tasks.slice(0, 5).map((t, index) => {
-        const { subcategoryName, color } = getTaskCategoryInfo(t);
-        const iconPalette = [
-          { bg: '#EDE9FE', color: '#6366F1', icon: 'book-outline' as const },
-          { bg: '#E0F2FE', color: '#0284C7', icon: 'calculator-outline' as const },
-          { bg: '#DCFCE7', color: '#10B981', icon: 'bulb-outline' as const },
-        ];
-        const pal = iconPalette[index % iconPalette.length];
-        return {
-          id: t.id,
-          title: t.title,
-          duration: t.estimatedMinutes ? `${t.estimatedMinutes}m` : '1h',
-          type: subcategoryName,
-          progress: t.completed ? 100 : (t.progressPercent ?? 30),
-          iconName: pal.icon,
-          iconBg: pal.bg,
-          iconColor: color || pal.color,
-          isUserTask: true,
-          completed: t.completed,
-        };
-      });
+  // Is the selected calendar date today?
+  const isViewingToday = useMemo(() => {
+    const now = new Date();
+    return (
+      selectedCalendarDate.getFullYear() === now.getFullYear() &&
+      selectedCalendarDate.getMonth() === now.getMonth() &&
+      selectedCalendarDate.getDate() === now.getDate()
+    );
+  }, [selectedCalendarDate]);
+
+  const selectedDateStr = useMemo(() => {
+    return selectedCalendarDate.toISOString().split('T')[0];
+  }, [selectedCalendarDate]);
+
+  // Dynamic Plan section title based on calendar selection
+  const planSectionTitle = useMemo(() => {
+    if (calendarMode === 'yearly') {
+      return `Plans for ${selectedCalendarDate.getFullYear()}`;
     }
-    return [];
-  }, [tasks, getTaskCategoryInfo]);
+    if (isViewingToday && calendarMode === 'daily') {
+      return "Today's Plan";
+    }
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    if (calendarMode === 'monthly') {
+      return `Plans in ${months[selectedCalendarDate.getMonth()]} ${selectedCalendarDate.getFullYear()}`;
+    }
+    return `Plan for ${selectedCalendarDate.getDate()} ${months[selectedCalendarDate.getMonth()]}`;
+  }, [calendarMode, isViewingToday, selectedCalendarDate]);
+
+  // Convert tasks - filter by selected calendar date or mode
+  const displayPlanItems = useMemo(() => {
+    if (tasks.length === 0) return [];
+
+    let filtered = tasks;
+    if (calendarMode === 'yearly') {
+      const yearPrefix = `${selectedCalendarDate.getFullYear()}`;
+      filtered = tasks.filter((t) => t.dueDate && t.dueDate.startsWith(yearPrefix));
+    } else if (calendarMode === 'monthly') {
+      const year = selectedCalendarDate.getFullYear();
+      const month = String(selectedCalendarDate.getMonth() + 1).padStart(2, '0');
+      const monthPrefix = `${year}-${month}`;
+      filtered = tasks.filter((t) => t.dueDate && t.dueDate.startsWith(monthPrefix));
+    } else {
+      // Daily mode
+      const matched = tasks.filter((t) => t.dueDate && t.dueDate.startsWith(selectedDateStr));
+      if (matched.length === 0 && isViewingToday) {
+        filtered = tasks.slice(0, 5);
+      } else {
+        filtered = matched;
+      }
+    }
+
+    return filtered.slice(0, 6).map((t, index) => {
+      const { subcategoryName, color } = getTaskCategoryInfo(t);
+      const iconPalette = [
+        { bg: '#EDE9FE', color: '#6366F1', icon: 'book-outline' as const },
+        { bg: '#E0F2FE', color: '#0284C7', icon: 'calculator-outline' as const },
+        { bg: '#DCFCE7', color: '#10B981', icon: 'bulb-outline' as const },
+      ];
+      const pal = iconPalette[index % iconPalette.length];
+      return {
+        id: t.id,
+        title: t.title,
+        duration: t.estimatedMinutes ? `${t.estimatedMinutes}m` : '1h',
+        type: subcategoryName,
+        progress: t.completed ? 100 : (t.progressPercent ?? 30),
+        iconName: pal.icon,
+        iconBg: pal.bg,
+        iconColor: color || pal.color,
+        isUserTask: true,
+        completed: t.completed,
+      };
+    });
+  }, [tasks, calendarMode, selectedCalendarDate, selectedDateStr, isViewingToday, getTaskCategoryInfo]);
 
   // Dynamic Featured Banner calculation
   const featuredStats = useMemo(() => {
@@ -227,10 +279,20 @@ export default function HomeScreen() {
           </View>
         </LinearGradient>
 
-        {/* Section: Today's Plan */}
+        {/* Interactive Calendar with Daily, Monthly, and Yearly view modes */}
+        <StudyCalendarCard
+          selectedDate={selectedCalendarDate}
+          onSelectDate={setSelectedCalendarDate}
+          activeMode={calendarMode}
+          onChangeMode={setCalendarMode}
+          tasks={tasks}
+          isDark={isDark}
+        />
+
+        {/* Section: Plan for Selected Date / Today */}
         <View style={styles.sectionHeaderRow}>
           <Text style={[styles.sectionHeading, { color: isDark ? '#FFFFFF' : '#0F172A' }]}>
-            Today&apos;s Plan
+            {planSectionTitle}
           </Text>
           <Pressable onPress={() => router.push('/tasks')} hitSlop={8}>
             <Text style={[styles.seeAllText, { color: '#6366F1' }]}>See All</Text>
@@ -328,10 +390,14 @@ export default function HomeScreen() {
               <Ionicons name="calendar-outline" size={28} color="#8B5CF6" />
             </View>
             <Text style={[styles.emptyPlanTitle, { color: isDark ? '#FFFFFF' : '#0F172A' }]}>
-              No Study Plans Yet
+              {isViewingToday && calendarMode === 'daily'
+                ? 'No Study Plans for Today'
+                : `No Plans Scheduled for ${selectedDateStr}`}
             </Text>
             <Text style={[styles.emptyPlanSubtitle, { color: isDark ? '#94A3B8' : '#64748B' }]}>
-              Tap here to create university assignments, exam preparations, or daily revision plans.
+              {isViewingToday
+                ? 'Tap here to create university assignments, exam preparations, or daily revision plans.'
+                : `Tap here to create a study plan or university task for this date.`}
             </Text>
             <View style={styles.emptyPlanActionBtn}>
               <Ionicons name="add-circle" size={18} color="#FFFFFF" />
@@ -527,6 +593,7 @@ export default function HomeScreen() {
       <ModalAddTask
         visible={isTaskModalVisible}
         onClose={() => setIsTaskModalVisible(false)}
+        initialDueDate={selectedDateStr}
       />
       <ModalAddSchedule
         visible={isScheduleModalVisible}
