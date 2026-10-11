@@ -42,7 +42,7 @@ export default function ScheduleScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={[styles.title, { color: colors.text }]}>Timetable</Text>
+          <Text style={[styles.title, { color: colors.text }]}>Study Plan</Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
             {daySessions.length} session{daySessions.length !== 1 ? 's' : ''} on {dayLabel}
           </Text>

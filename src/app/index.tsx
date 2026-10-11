@@ -1,17 +1,19 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   Pressable,
-  TextInput,
+  Image,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useStudy } from '@/context/StudyContext';
+import { useAuth } from '@/context/AuthContext';
 import { ModalAddTask } from '@/components/study/ModalAddTask';
 import { ModalAddSchedule } from '@/components/study/ModalAddSchedule';
 import { ModalAddWorkPlan } from '@/components/study/ModalAddWorkPlan';
@@ -19,57 +21,54 @@ import { ModalAddCategory } from '@/components/study/ModalAddCategory';
 import { AccountModal } from '@/components/auth/AccountModal';
 import { StudyTask } from '@/types/study';
 
-// Pastel palette for Today's Task horizontal cards
-const TODAY_PASTEL_COLORS = [
-  { bg: '#FFF1F2', border: '#FFE4E6', dot: '#10B981', darkBg: '#2C161D', darkBorder: '#4C1D2F' }, // Peach / Rose
-  { bg: '#ECFDF5', border: '#D1FAE5', dot: '#10B981', darkBg: '#132E27', darkBorder: '#1B4D3E' }, // Mint / Aqua
-  { bg: '#F5F3FF', border: '#EDE9FE', dot: '#10B981', darkBg: '#241836', darkBorder: '#3B2554' }, // Lavender
-  { bg: '#FFFBEB', border: '#FEF3C7', dot: '#10B981', darkBg: '#2C2314', darkBorder: '#45351A' }, // Soft Amber
-  { bg: '#EFF6FF', border: '#DBEAFE', dot: '#10B981', darkBg: '#14233D', darkBorder: '#1E3A8A' }, // Soft Blue
-];
+// Reference study items from StudyZen design
+interface PlanItem {
+  id: string;
+  title: string;
+  duration: string;
+  type: string;
+  progress: number;
+  iconName: keyof typeof Ionicons.glyphMap;
+  iconBg: string;
+  iconColor: string;
+}
 
-// Pastel styling for Pending Task vertical cards
-const PENDING_CARD_STYLES = [
+const DEFAULT_PLANS: PlanItem[] = [
   {
-    bg: '#F0FDFA',
-    border: '#CCFBF1',
-    stripe: '#06B6D4',
-    progressFill: '#8B5CF6',
-    progressTrack: '#E0E7FF',
-    darkBg: '#11292B',
-    darkBorder: '#164E63',
+    id: 'plan-ds',
+    title: 'Data Structures',
+    duration: '1h 30m',
+    type: 'Study',
+    progress: 60,
+    iconName: 'book-outline',
+    iconBg: '#EDE9FE',
+    iconColor: '#6366F1',
   },
   {
-    bg: '#FFFBEB',
-    border: '#FEF3C7',
-    stripe: '#F59E0B',
-    progressFill: '#F59E0B',
-    progressTrack: '#FDE68A',
-    darkBg: '#2E2514',
-    darkBorder: '#78350F',
+    id: 'plan-dm',
+    title: 'Discrete mathematics',
+    duration: '45m',
+    type: 'Review',
+    progress: 0,
+    iconName: 'calculator-outline',
+    iconBg: '#E0F2FE',
+    iconColor: '#0284C7',
   },
   {
-    bg: '#F5F3FF',
-    border: '#EDE9FE',
-    stripe: '#8B5CF6',
-    progressFill: '#8B5CF6',
-    progressTrack: '#DDD6FE',
-    darkBg: '#241836',
-    darkBorder: '#4C1D95',
-  },
-  {
-    bg: '#EFF6FF',
-    border: '#DBEAFE',
-    stripe: '#3B82F6',
-    progressFill: '#3B82F6',
-    progressTrack: '#BFDBFE',
-    darkBg: '#14233D',
-    darkBorder: '#1E3A8A',
+    id: 'plan-ps',
+    title: 'Problem Solving',
+    duration: '1h',
+    type: 'Practice',
+    progress: 30,
+    iconName: 'bulb-outline',
+    iconBg: '#DCFCE7',
+    iconColor: '#10B981',
   },
 ];
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { profile } = useAuth();
 
   const {
     categories,
@@ -84,374 +83,296 @@ export default function HomeScreen() {
   const [isWorkPlanModalVisible, setIsWorkPlanModalVisible] = useState(false);
   const [isCategoryModalVisible, setIsCategoryModalVisible] = useState(false);
   const [isAccountModalVisible, setIsAccountModalVisible] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isSearchActive, setIsSearchActive] = useState(false);
+  const [isWelcomeModalVisible, setIsWelcomeModalVisible] = useState(false);
+  const [isAiTipModalVisible, setIsAiTipModalVisible] = useState(false);
 
-  // Helper to get category & subcategory name for any task
-  const getTaskCategoryInfo = (task: StudyTask) => {
+  const isDark = themeMode === 'dark';
+
+  // Dynamic time greeting
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good Morning!';
+    if (hour < 17) return 'Good Afternoon!';
+    return 'Good Evening!';
+  }, []);
+
+  // Display user name
+  const displayName = profile?.fullName || 'Abdullah Al Mamun';
+
+  // Helper for dynamic tasks
+  const getTaskCategoryInfo = useCallback((task: StudyTask) => {
     const cat = categories.find((c) => c.id === task.categoryId);
     const sub = cat?.subcategories.find((s) => s.id === task.subcategoryId);
     return {
       categoryName: cat?.name || 'General',
       subcategoryName: sub?.name || cat?.name || 'Work Plans',
-      color: cat?.color || '#8B5CF6',
+      color: cat?.color || '#6366F1',
     };
-  };
+  }, [categories]);
 
-  // Filter tasks based on search
-  const filteredTasks = useMemo(() => {
-    if (!searchQuery.trim()) return tasks;
-    const q = searchQuery.toLowerCase().trim();
-    return tasks.filter(
-      (t) =>
-        t.title.toLowerCase().includes(q) ||
-        categories.find((c) => c.id === t.categoryId)?.name.toLowerCase().includes(q)
-    );
-  }, [tasks, categories, searchQuery]);
-
-  // Separate Today's tasks from Pending tasks
-  const todayTasks = useMemo(() => {
-    return filteredTasks.filter((t) => t.isToday || t.priority === 'high');
-  }, [filteredTasks]);
-
-  const pendingTasks = useMemo(() => {
-    const todayIds = new Set(todayTasks.map((t) => t.id));
-    return filteredTasks.filter((t) => !todayIds.has(t.id) && !t.completed);
-  }, [filteredTasks, todayTasks]);
-
-  // Overall completion for Hero Card Ring (0% when empty)
-  const heroProgress = useMemo(() => {
-    if (tasks.length === 0) return 0;
-    const completedCount = tasks.filter((t) => t.completed).length;
-    return Math.round((completedCount / tasks.length) * 100);
-  }, [tasks]);
-
-  const isDark = themeMode === 'dark';
+  // Convert tasks or fallback to reference plan items
+  const displayPlanItems = useMemo(() => {
+    if (tasks.length > 0) {
+      return tasks.slice(0, 5).map((t, index) => {
+        const { subcategoryName, color } = getTaskCategoryInfo(t);
+        const iconPalette = [
+          { bg: '#EDE9FE', color: '#6366F1', icon: 'book-outline' as const },
+          { bg: '#E0F2FE', color: '#0284C7', icon: 'calculator-outline' as const },
+          { bg: '#DCFCE7', color: '#10B981', icon: 'bulb-outline' as const },
+        ];
+        const pal = iconPalette[index % iconPalette.length];
+        return {
+          id: t.id,
+          title: t.title,
+          duration: t.estimatedMinutes ? `${t.estimatedMinutes}m` : '1h',
+          type: subcategoryName,
+          progress: t.completed ? 100 : (t.progressPercent ?? 30),
+          iconName: pal.icon,
+          iconBg: pal.bg,
+          iconColor: color || pal.color,
+          isUserTask: true,
+          completed: t.completed,
+        };
+      });
+    }
+    return DEFAULT_PLANS;
+  }, [tasks, getTaskCategoryInfo]);
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC' }]}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
-        {/* Top Header matching reference */}
+        {/* Top Header */}
         <View style={styles.topHeader}>
+          {/* Left Avatar & Greeting */}
           <Pressable
-            hitSlop={10}
             onPress={() => setIsAccountModalVisible(true)}
-            style={styles.iconButton}>
-            <Ionicons name="menu-outline" size={26} color={colors.text} />
+            style={styles.profileRow}
+            hitSlop={6}>
+            <View style={styles.avatarBorder}>
+              {profile?.avatarUrl ? (
+                <Image source={{ uri: profile.avatarUrl }} style={styles.avatarImage} />
+              ) : (
+                <LinearGradient
+                  colors={['#6366F1', '#A855F7']}
+                  style={styles.avatarFallback}>
+                  <Text style={styles.avatarFallbackText}>
+                    {displayName.charAt(0).toUpperCase()}
+                  </Text>
+                </LinearGradient>
+              )}
+            </View>
+            <View style={styles.greetingTextCol}>
+              <Text style={[styles.greetingSub, { color: isDark ? '#94A3B8' : '#64748B' }]}>
+                {greeting}
+              </Text>
+              <Text
+                style={[styles.greetingName, { color: isDark ? '#FFFFFF' : '#0F172A' }]}
+                numberOfLines={1}>
+                {displayName}
+              </Text>
+            </View>
           </Pressable>
 
-          <Text style={[styles.screenTitle, { color: colors.text }]}>Today</Text>
+          {/* Right Notification Bell */}
+          <View style={styles.headerRightActions}>
+            <Pressable
+              onPress={() => setIsWelcomeModalVisible(true)}
+              style={[
+                styles.iconCircleBtn,
+                {
+                  backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                  borderColor: isDark ? '#334155' : '#E2E8F0',
+                },
+              ]}
+              hitSlop={8}>
+              <Ionicons name="sparkles-outline" size={18} color="#6366F1" />
+            </Pressable>
 
-          <Pressable
-            hitSlop={10}
-            onPress={() => setIsSearchActive((prev) => !prev)}
-            style={styles.iconButton}>
-            <Ionicons
-              name={isSearchActive ? 'close-outline' : 'search-outline'}
-              size={24}
-              color={colors.text}
-            />
-          </Pressable>
+            <Pressable
+              onPress={() => router.push('/analytics')}
+              style={[
+                styles.iconCircleBtn,
+                {
+                  backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                  borderColor: isDark ? '#334155' : '#E2E8F0',
+                },
+              ]}
+              hitSlop={8}>
+              <Ionicons
+                name="notifications-outline"
+                size={20}
+                color={isDark ? '#F8FAFC' : '#1E293B'}
+              />
+              <View style={styles.notifBadgeDot} />
+            </Pressable>
+          </View>
         </View>
 
-        {/* Search bar when toggled */}
-        {isSearchActive && (
-          <View
-            style={[
-              styles.searchBar,
-              {
-                backgroundColor: colors.card,
-                borderColor: colors.cardBorder,
-              },
-            ]}>
-            <Ionicons name="search" size={18} color={colors.textSecondary} />
-            <TextInput
-              style={[styles.searchInput, { color: colors.text }]}
-              placeholder="Search tasks, categories..."
-              placeholderTextColor={colors.textSecondary}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              autoFocus
-            />
-            {searchQuery.length > 0 && (
-              <Pressable onPress={() => setSearchQuery('')}>
-                <Ionicons name="close-circle" size={18} color={colors.textSecondary} />
-              </Pressable>
-            )}
-          </View>
-        )}
-
-        {/* Hero Card: Purple Gradient with Circular Progress */}
+        {/* Featured Banner Card: Data Structures (Purple Gradient + 3D Books & Cup) */}
         <LinearGradient
-          colors={['#8B5CF6', '#A855F7', '#C084FC']}
+          colors={['#6366F1', '#7C3AED', '#8B5CF6']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={styles.heroCard}>
-          {/* Left Circular Ring */}
-          <View style={styles.circleContainer}>
-            <View
-              style={[
-                styles.circleOuterRing,
-                heroProgress === 0 && {
-                  borderColor: 'rgba(255, 255, 255, 0.4)',
-                  borderLeftColor: 'rgba(255, 255, 255, 0.4)',
-                },
-              ]}>
-              <View style={styles.circleInner}>
-                <Text style={styles.circlePercentText}>{heroProgress}%</Text>
-              </View>
+          style={styles.featuredCard}>
+          <View style={styles.featuredLeftCol}>
+            <Text style={styles.featuredTitle}>Data Structures</Text>
+            <Text style={styles.featuredSub}>
+              Today&apos;s Focus: 2 of 5 Sessions{'\n'}Complete Successfully
+            </Text>
+
+            {/* Mini Progress Track */}
+            <View style={styles.featuredProgressTrack}>
+              <View style={[styles.featuredProgressFill, { width: '40%' }]} />
             </View>
+
+            {/* Learn More Pill Button */}
+            <Pressable
+              onPress={() => router.push('/tasks')}
+              style={styles.learnMoreBtn}>
+              <Text style={styles.learnMoreBtnText}>Learn more</Text>
+            </Pressable>
           </View>
 
-          {/* Right Hero Info */}
-          <View style={styles.heroDetails}>
-            <Text style={styles.heroTitle}>
-              {tasks.length === 0
-                ? 'Welcome!'
-                : heroProgress === 100
-                ? 'Awesome job! 🎉'
-                : heroProgress >= 50
-                ? 'Great News!'
-                : 'Keep Going!'}
-            </Text>
-            <Text style={styles.heroSubtitle}>
-              {tasks.length === 0
-                ? 'No tasks yet. Create one to get started!'
-                : heroProgress === 100
-                ? 'All tasks completed for today!'
-                : heroProgress >= 50
-                ? 'Your task is almost done!'
-                : `${tasks.filter((t) => !t.completed).length} pending task${
-                    tasks.filter((t) => !t.completed).length === 1 ? '' : 's'
-                  } to complete`}
-            </Text>
-            <Pressable
-              onPress={() =>
-                tasks.length === 0 ? setIsTaskModalVisible(true) : router.push('/tasks')
-              }
-              style={styles.viewTaskButton}>
-              <Text style={styles.viewTaskButtonText}>
-                {tasks.length === 0 ? '+ Add Task' : 'View Task'}
-              </Text>
-            </Pressable>
+          {/* Right 3D Books Illustration */}
+          <View style={styles.featuredImageWrap}>
+            <Image
+              source={require('@/assets/images/study_books_3d.jpg')}
+              style={styles.featuredImage}
+              resizeMode="cover"
+            />
           </View>
         </LinearGradient>
 
-        {/* Section: Today's Task */}
+        {/* Section: Today's Plan */}
         <View style={styles.sectionHeaderRow}>
-          <View style={styles.sectionTitleWithBadge}>
-            <Text style={[styles.sectionHeading, { color: colors.text }]}>Today&apos;s Task</Text>
-            <View style={styles.purpleCountBadge}>
-              <Text style={styles.purpleCountBadgeText}>{todayTasks.length}</Text>
-            </View>
-          </View>
+          <Text style={[styles.sectionHeading, { color: isDark ? '#FFFFFF' : '#0F172A' }]}>
+            Today&apos;s Plan
+          </Text>
           <Pressable onPress={() => router.push('/tasks')} hitSlop={8}>
-            <Text style={[styles.seeAllText, { color: colors.textSecondary }]}>See all</Text>
+            <Text style={[styles.seeAllText, { color: '#6366F1' }]}>See All</Text>
           </Pressable>
         </View>
 
-        {/* Horizontal Carousel of Pastel Cards or Empty State */}
-        {todayTasks.length === 0 ? (
-          <Pressable
-            onPress={() => setIsTaskModalVisible(true)}
-            style={[
-              styles.emptyStateCard,
-              {
-                backgroundColor: isDark ? '#1F2937' : '#F9FAFB',
-                borderColor: isDark ? '#374151' : '#E5E7EB',
-              },
-            ]}>
-            <View style={styles.addCardIconCircle}>
-              <Ionicons name="add" size={24} color="#8B5CF6" />
-            </View>
-            <View style={{ flex: 1, marginLeft: 14 }}>
-              <Text style={[styles.emptyCardTitle, { color: colors.text }]}>
-                No tasks scheduled for today
-              </Text>
-              <Text style={[styles.emptyCardSub, { color: colors.textSecondary }]}>
-                Tap here to add your first task
-              </Text>
-            </View>
-          </Pressable>
-        ) : (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.horizontalScrollContent}>
-            {todayTasks.map((task, index) => {
-              const colorTheme = TODAY_PASTEL_COLORS[index % TODAY_PASTEL_COLORS.length];
-              const { subcategoryName } = getTaskCategoryInfo(task);
-
-              return (
-                <Pressable
-                  key={task.id}
-                  onPress={() => toggleTask(task.id)}
-                  style={[
-                    styles.todayCard,
-                    {
-                      backgroundColor: isDark ? colorTheme.darkBg : colorTheme.bg,
-                      borderColor: isDark ? colorTheme.darkBorder : colorTheme.border,
-                    },
-                  ]}>
-                  <Text style={styles.cardSubtitle} numberOfLines={1}>
-                    {subcategoryName}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.cardTitle,
-                      { color: isDark ? '#FFFFFF' : '#111827' },
-                      task.completed && styles.cardTitleCompleted,
-                    ]}
-                    numberOfLines={2}>
-                    {task.title}
-                  </Text>
-                  <View style={styles.cardFooter}>
-                    <View
-                      style={[
-                        styles.greenDot,
-                        { backgroundColor: task.completed ? '#6B7280' : colorTheme.dot },
-                      ]}
-                    />
-                    <Text style={[styles.cardDueText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                      {task.completed ? 'Completed' : task.dueDate || 'Due Today'}
-                    </Text>
-                  </View>
-                </Pressable>
-              );
-            })}
-
-            {/* Quick Add Card at end of horizontal list */}
+        {/* Vertical List of Today's Plan Items */}
+        <View style={styles.planItemsContainer}>
+          {displayPlanItems.map((item) => (
             <Pressable
-              onPress={() => setIsTaskModalVisible(true)}
+              key={item.id}
+              onPress={() => {
+                if ('isUserTask' in item && item.isUserTask) {
+                  toggleTask(item.id);
+                } else {
+                  setIsTaskModalVisible(true);
+                }
+              }}
               style={[
-                styles.todayAddCard,
+                styles.planCard,
                 {
-                  backgroundColor: isDark ? '#1F2937' : '#F9FAFB',
-                  borderColor: colors.cardBorder,
+                  backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                  borderColor: isDark ? '#334155' : '#F1F5F9',
                 },
               ]}>
-              <View style={styles.addCardIconCircle}>
-                <Ionicons name="add" size={24} color="#8B5CF6" />
+              {/* Left Tinted Icon Container */}
+              <View style={[styles.planIconBox, { backgroundColor: item.iconBg }]}>
+                <Ionicons name={item.iconName} size={22} color={item.iconColor} />
               </View>
-              <Text style={[styles.addCardText, { color: colors.textSecondary }]}>Add Task</Text>
-            </Pressable>
-          </ScrollView>
-        )}
 
-        {/* Section: Pending Task */}
-        <View style={styles.sectionHeaderRow}>
-          <View style={styles.sectionTitleWithBadge}>
-            <Text style={[styles.sectionHeading, { color: colors.text }]}>Pending Task</Text>
-            <View style={styles.purpleCountBadge}>
-              <Text style={styles.purpleCountBadgeText}>{pendingTasks.length}</Text>
-            </View>
-          </View>
-          <Pressable onPress={() => router.push('/tasks')} hitSlop={8}>
-            <Text style={[styles.seeAllText, { color: colors.textSecondary }]}>See all</Text>
-          </Pressable>
-        </View>
-
-        {/* Vertical Stack of Wide Cards or Empty State */}
-        {pendingTasks.length === 0 ? (
-          <View
-            style={[
-              styles.emptyStateCard,
-              {
-                backgroundColor: isDark ? '#1F2937' : '#F9FAFB',
-                borderColor: isDark ? '#374151' : '#E5E7EB',
-                marginBottom: 20,
-              },
-            ]}>
-            <Ionicons name="checkmark-done-circle-outline" size={28} color="#10B981" />
-            <View style={{ flex: 1, marginLeft: 14 }}>
-              <Text style={[styles.emptyCardTitle, { color: colors.text }]}>
-                No pending tasks
-              </Text>
-              <Text style={[styles.emptyCardSub, { color: colors.textSecondary }]}>
-                All caught up! You have no pending tasks.
-              </Text>
-            </View>
-          </View>
-        ) : (
-          <View style={styles.pendingListContainer}>
-            {pendingTasks.map((task, index) => {
-              const cardTheme = PENDING_CARD_STYLES[index % PENDING_CARD_STYLES.length];
-              const { subcategoryName, categoryName } = getTaskCategoryInfo(task);
-              const progress = task.progressPercent ?? 65;
-
-              return (
-                <Pressable
-                  key={task.id}
-                  onPress={() => toggleTask(task.id)}
+              {/* Middle Info */}
+              <View style={styles.planCardMiddle}>
+                <Text
                   style={[
-                    styles.pendingCard,
+                    styles.planCardTitle,
+                    { color: isDark ? '#FFFFFF' : '#0F172A' },
+                    'completed' in item && Boolean((item as any).completed) ? styles.titleCompleted : null,
+                  ]}
+                  numberOfLines={1}>
+                  {item.title}
+                </Text>
+                <View style={styles.planMetaRow}>
+                  <Ionicons
+                    name="time-outline"
+                    size={13}
+                    color={isDark ? '#94A3B8' : '#64748B'}
+                  />
+                  <Text style={[styles.planMetaText, { color: isDark ? '#94A3B8' : '#64748B' }]}>
+                    {item.duration}
+                  </Text>
+                  <Text style={[styles.planMetaDot, { color: isDark ? '#64748B' : '#CBD5E1' }]}>
+                    •
+                  </Text>
+                  <Text style={[styles.planMetaText, { color: isDark ? '#94A3B8' : '#64748B' }]}>
+                    {item.type}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Right Circular Progress Gauge */}
+              <View style={styles.gaugeContainer}>
+                <View
+                  style={[
+                    styles.gaugeOuterRing,
                     {
-                      backgroundColor: isDark ? cardTheme.darkBg : cardTheme.bg,
-                      borderColor: isDark ? cardTheme.darkBorder : cardTheme.border,
+                      borderColor: isDark ? '#334155' : '#E2E8F0',
+                      borderTopColor: item.progress > 0 ? '#6366F1' : isDark ? '#334155' : '#E2E8F0',
+                      borderRightColor:
+                        item.progress >= 50 ? '#6366F1' : isDark ? '#334155' : '#E2E8F0',
                     },
                   ]}>
-                  {/* Left Colored Accent Stripe */}
-                  <View style={[styles.accentStripe, { backgroundColor: cardTheme.stripe }]} />
+                  <Text style={[styles.gaugeText, { color: isDark ? '#E2E8F0' : '#1E293B' }]}>
+                    {item.progress}%
+                  </Text>
+                </View>
+              </View>
+            </Pressable>
+          ))}
+        </View>
 
-                  <View style={styles.pendingCardContent}>
-                    <Text style={styles.pendingSubtitle}>
-                      {subcategoryName !== 'General' ? subcategoryName : categoryName}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.pendingTitle,
-                        { color: isDark ? '#FFFFFF' : '#0F172A' },
-                        task.completed && styles.cardTitleCompleted,
-                      ]}>
-                      {task.title}
-                    </Text>
-
-                    {/* Progress Bar */}
-                    <View
-                      style={[
-                        styles.progressBarTrack,
-                        {
-                          backgroundColor: isDark ? '#374151' : cardTheme.progressTrack,
-                        },
-                      ]}>
-                      <View
-                        style={[
-                          styles.progressBarFill,
-                          {
-                            width: `${task.completed ? 100 : progress}%`,
-                            backgroundColor: cardTheme.progressFill,
-                          },
-                        ]}
-                      />
-                    </View>
-
-                    {/* Footer Row */}
-                    <View style={styles.pendingFooterRow}>
-                      <Text style={styles.pendingDueDate}>
-                        {task.completed ? 'Completed' : task.dueDate || 'Due Soon'}
-                      </Text>
-                      <Text
-                        style={[
-                          styles.pendingPercentText,
-                          { color: isDark ? '#E5E7EB' : '#0F172A' },
-                        ]}>
-                        {task.completed ? '100%' : `${progress}%`}
-                      </Text>
-                    </View>
-                  </View>
-                </Pressable>
-              );
-            })}
+        {/* StudyZen AI Tip Card */}
+        <Pressable
+          onPress={() => setIsAiTipModalVisible(true)}
+          style={[
+            styles.aiTipCard,
+            {
+              backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+              borderColor: isDark ? '#334155' : '#F1F5F9',
+            },
+          ]}>
+          {/* Left AI Mascot Avatar */}
+          <View style={styles.aiMascotCircle}>
+            <Image
+              source={require('@/assets/images/study_ai_mascot.jpg')}
+              style={styles.aiMascotImage}
+              resizeMode="cover"
+            />
           </View>
-        )}
 
-        {/* Action Bar for Custom Work Plans, Categories & AI Assistant */}
-        <View style={[styles.quickManagerBar, { borderColor: colors.cardBorder }]}>
+          {/* Middle Text */}
+          <View style={styles.aiTipTextCol}>
+            <Text style={[styles.aiTipHeading, { color: isDark ? '#FFFFFF' : '#0F172A' }]}>
+              StudyZen AI Tip
+            </Text>
+            <Text
+              style={[styles.aiTipSub, { color: isDark ? '#94A3B8' : '#64748B' }]}
+              numberOfLines={2}>
+              You study best between 9-11AM. Let&apos;s plan your deep focus session!
+            </Text>
+          </View>
+
+          {/* Right Chevron */}
+          <Ionicons
+            name="chevron-forward"
+            size={18}
+            color={isDark ? '#64748B' : '#94A3B8'}
+          />
+        </Pressable>
+
+        {/* Action Pills: + Work Plan, + Category, + Task */}
+        <View style={styles.quickManagerBar}>
           <Pressable
             onPress={() => setIsWorkPlanModalVisible(true)}
-            style={[styles.managerPillBtn, { backgroundColor: '#8B5CF6' }]}>
+            style={[styles.managerPillBtn, { backgroundColor: '#6366F1' }]}>
             <Ionicons name="sparkles" size={15} color="#FFF" />
             <Text style={styles.managerPillBtnText}>+ Work Plan</Text>
           </Pressable>
@@ -460,7 +381,10 @@ export default function HomeScreen() {
             onPress={() => setIsCategoryModalVisible(true)}
             style={[
               styles.managerPillBtnSecondary,
-              { backgroundColor: colors.card, borderColor: colors.cardBorder },
+              {
+                backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                borderColor: isDark ? '#334155' : '#E2E8F0',
+              },
             ]}>
             <Ionicons name="folder-outline" size={15} color={colors.text} />
             <Text style={[styles.managerPillBtnTextSecondary, { color: colors.text }]}>
@@ -472,7 +396,10 @@ export default function HomeScreen() {
             onPress={() => setIsTaskModalVisible(true)}
             style={[
               styles.managerPillBtnSecondary,
-              { backgroundColor: colors.card, borderColor: colors.cardBorder },
+              {
+                backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                borderColor: isDark ? '#334155' : '#E2E8F0',
+              },
             ]}>
             <Ionicons name="add-circle-outline" size={15} color={colors.text} />
             <Text style={[styles.managerPillBtnTextSecondary, { color: colors.text }]}>
@@ -481,11 +408,111 @@ export default function HomeScreen() {
           </Pressable>
         </View>
 
-        {/* Subtle Bottom Spacing for Bottom Tab Bar */}
-        <View style={{ height: 40 }} />
+        {/* Bottom Tab Bar Spacing */}
+        <View style={{ height: 90 }} />
       </ScrollView>
 
-      {/* Modals */}
+      {/* Screen 1 Welcome / Brand Modal */}
+      <Modal
+        visible={isWelcomeModalVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setIsWelcomeModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.welcomeModalCard, { backgroundColor: isDark ? '#0F172A' : '#FFFFFF' }]}>
+            <Pressable
+              onPress={() => setIsWelcomeModalVisible(false)}
+              style={styles.modalCloseBtn}
+              hitSlop={10}>
+              <Ionicons name="close" size={24} color={isDark ? '#FFF' : '#0F172A'} />
+            </Pressable>
+
+            {/* StudyZen Logo & Brand */}
+            <View style={styles.brandHeader}>
+              <View style={styles.brandLogoCircle}>
+                <Ionicons name="school" size={18} color="#6366F1" />
+              </View>
+              <Text style={[styles.brandTitle, { color: isDark ? '#FFF' : '#0F172A' }]}>
+                StudyZen
+              </Text>
+            </View>
+
+            {/* 3D Cute Robot Reading Illustration */}
+            <Image
+              source={require('@/assets/images/study_ai_mascot.jpg')}
+              style={styles.welcomeRobotImage}
+              resizeMode="contain"
+            />
+
+            {/* Headline */}
+            <Text style={[styles.welcomeHeadline, { color: isDark ? '#FFF' : '#0F172A' }]}>
+              Daily Focus{'\n'}Better Learning
+            </Text>
+            <Text style={[styles.welcomeSubtitle, { color: isDark ? '#94A3B8' : '#64748B' }]}>
+              Learn better focus stronger grow every day build strong habits success
+            </Text>
+
+            {/* Bottom Swipe / Continue Button */}
+            <Pressable
+              onPress={() => setIsWelcomeModalVisible(false)}
+              style={styles.welcomeContinueBtn}>
+              <LinearGradient
+                colors={['#6366F1', '#8B5CF6']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.welcomeGradientBtn}>
+                <Ionicons name="chevron-up" size={24} color="#FFF" />
+              </LinearGradient>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      {/* AI Tip Modal */}
+      <Modal
+        visible={isAiTipModalVisible}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setIsAiTipModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.aiTipModalCard, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF' }]}>
+            <View style={styles.aiTipModalHeader}>
+              <Image
+                source={require('@/assets/images/study_ai_mascot.jpg')}
+                style={styles.aiTipModalMascot}
+              />
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={[styles.aiTipModalTitle, { color: isDark ? '#FFF' : '#0F172A' }]}>
+                  StudyZen AI Coach
+                </Text>
+                <Text style={{ fontSize: 12, color: '#6366F1', fontWeight: '600' }}>
+                  Personalized Study Intelligence
+                </Text>
+              </View>
+              <Pressable onPress={() => setIsAiTipModalVisible(false)}>
+                <Ionicons name="close-circle" size={24} color={isDark ? '#64748B' : '#94A3B8'} />
+              </Pressable>
+            </View>
+
+            <Text style={[styles.aiTipModalBody, { color: isDark ? '#CBD5E1' : '#334155' }]}>
+              💡 <Text style={{ fontWeight: '700' }}>Deep Focus Window Detected:</Text> Your brain retention and cognitive speed peak between 9:00 AM and 11:30 AM.
+              {'\n\n'}
+              🎯 Recommendation: Schedule your hardest topics (like Data Structures or University Works) during this morning slot with 25-minute Pomodoro intervals.
+            </Text>
+
+            <Pressable
+              onPress={() => {
+                setIsAiTipModalVisible(false);
+                router.push('/focus');
+              }}
+              style={styles.startFocusBtn}>
+              <Text style={styles.startFocusBtnText}>Start Deep Focus Timer ⏱️</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Function Modals */}
       <ModalAddTask
         visible={isTaskModalVisible}
         onClose={() => setIsTaskModalVisible(false)}
@@ -515,7 +542,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 18,
+    paddingHorizontal: 20,
     paddingTop: 8,
     paddingBottom: 24,
   },
@@ -525,99 +552,148 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 12,
   },
-  iconButton: {
-    padding: 6,
-    borderRadius: 10,
-  },
-  screenTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    letterSpacing: -0.3,
-  },
-  searchBar: {
+  profileRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    marginBottom: 16,
-    gap: 10,
-  },
-  searchInput: {
+    gap: 12,
     flex: 1,
-    fontSize: 14,
-    padding: 0,
   },
-  heroCard: {
-    borderRadius: 24,
-    paddingVertical: 22,
-    paddingHorizontal: 20,
-    flexDirection: 'row',
+  avatarBorder: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    borderWidth: 2,
+    borderColor: '#6366F1',
     alignItems: 'center',
-    marginBottom: 24,
-    shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.28,
-    shadowRadius: 14,
-    elevation: 8,
+    justifyContent: 'center',
+    overflow: 'hidden',
   },
-  circleContainer: {
-    marginRight: 18,
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+  },
+  avatarFallback: {
+    width: '100%',
+    height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  circleOuterRing: {
-    width: 78,
-    height: 78,
-    borderRadius: 39,
-    borderWidth: 6,
-    borderColor: '#FFFFFF',
-    borderBottomColor: 'rgba(255, 255, 255, 0.25)',
-    borderLeftColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    transform: [{ rotate: '-45deg' }],
-  },
-  circleInner: {
-    transform: [{ rotate: '45deg' }],
-  },
-  circlePercentText: {
+  avatarFallbackText: {
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '800',
   },
-  heroDetails: {
+  greetingTextCol: {
     flex: 1,
   },
-  heroTitle: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '800',
-    marginBottom: 3,
-  },
-  heroSubtitle: {
-    color: 'rgba(255, 255, 255, 0.92)',
-    fontSize: 13,
+  greetingSub: {
+    fontSize: 12,
     fontWeight: '500',
-    marginBottom: 12,
+    marginBottom: 2,
   },
-  viewTaskButton: {
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 7,
-    paddingHorizontal: 18,
+  greetingName: {
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+  },
+  headerRightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  iconCircleBtn: {
+    width: 40,
+    height: 40,
     borderRadius: 20,
-    alignSelf: 'flex-start',
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.04,
     shadowRadius: 4,
     elevation: 2,
   },
-  viewTaskButtonText: {
-    color: '#1E1B4B',
+  notifBadgeDot: {
+    position: 'absolute',
+    top: 9,
+    right: 10,
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: '#EF4444',
+  },
+  featuredCard: {
+    borderRadius: 26,
+    padding: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 10,
+    marginBottom: 24,
+    shadowColor: '#6366F1',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.28,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  featuredLeftCol: {
+    flex: 1.25,
+    paddingRight: 6,
+  },
+  featuredTitle: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+    marginBottom: 4,
+  },
+  featuredSub: {
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontSize: 12,
+    fontWeight: '500',
+    lineHeight: 16,
+    marginBottom: 12,
+  },
+  featuredProgressTrack: {
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    marginBottom: 14,
+    overflow: 'hidden',
+  },
+  featuredProgressFill: {
+    height: '100%',
+    borderRadius: 3,
+    backgroundColor: '#FFFFFF',
+  },
+  learnMoreBtn: {
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+    alignSelf: 'flex-start',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  learnMoreBtnText: {
+    color: '#6366F1',
     fontSize: 13,
     fontWeight: '700',
+  },
+  featuredImageWrap: {
+    flex: 0.95,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  featuredImage: {
+    width: 118,
+    height: 118,
+    borderRadius: 18,
   },
   sectionHeaderRow: {
     flexDirection: 'row',
@@ -625,170 +701,128 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 14,
   },
-  sectionTitleWithBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
   sectionHeading: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '800',
     letterSpacing: -0.3,
-  },
-  purpleCountBadge: {
-    backgroundColor: '#8B5CF6',
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  purpleCountBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
   },
   seeAllText: {
     fontSize: 13,
-    fontWeight: '500',
-  },
-  horizontalScrollContent: {
-    gap: 12,
-    paddingBottom: 22,
-  },
-  todayCard: {
-    width: 148,
-    minHeight: 140,
-    borderRadius: 20,
-    borderWidth: 1,
-    padding: 16,
-    justifyContent: 'space-between',
-  },
-  cardSubtitle: {
-    color: '#9CA3AF',
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 6,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  cardTitle: {
-    fontSize: 15,
     fontWeight: '700',
-    lineHeight: 21,
-    marginBottom: 12,
   },
-  cardTitleCompleted: {
-    textDecorationLine: 'line-through',
-    opacity: 0.6,
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  greenDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginRight: 6,
-  },
-  cardDueText: {
-    fontSize: 11,
-    fontWeight: '500',
-  },
-  todayAddCard: {
-    width: 110,
-    minHeight: 140,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderStyle: 'dashed',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 12,
-  },
-  addCardIconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F3E8FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  addCardText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  pendingListContainer: {
+  planItemsContainer: {
     gap: 12,
     marginBottom: 20,
   },
-  pendingCard: {
-    borderRadius: 18,
+  planCard: {
+    borderRadius: 20,
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
     borderWidth: 1,
-    overflow: 'hidden',
-    position: 'relative',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  planIconBox: {
+    width: 46,
+    height: 46,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  planCardMiddle: {
+    flex: 1,
+  },
+  planCardTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  titleCompleted: {
+    textDecorationLine: 'line-through',
+    opacity: 0.6,
+  },
+  planMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  planMetaText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  planMetaDot: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  gaugeContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 10,
+  },
+  gaugeOuterRing: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 3.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    transform: [{ rotate: '-45deg' }],
+  },
+  gaugeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    transform: [{ rotate: '45deg' }],
+  },
+  aiTipCard: {
+    borderRadius: 22,
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    marginBottom: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.03,
     shadowRadius: 6,
     elevation: 1,
   },
-  accentStripe: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 5,
-    borderTopLeftRadius: 18,
-    borderBottomLeftRadius: 18,
-  },
-  pendingCardContent: {
-    paddingLeft: 18,
-    paddingRight: 16,
-    paddingVertical: 14,
-  },
-  pendingSubtitle: {
-    color: '#64748B',
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  pendingTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    marginBottom: 12,
-  },
-  progressBarTrack: {
-    height: 5,
-    borderRadius: 3,
+  aiMascotCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     overflow: 'hidden',
-    marginBottom: 10,
+    borderWidth: 1.5,
+    borderColor: '#6366F1',
+    marginRight: 12,
   },
-  progressBarFill: {
+  aiMascotImage: {
+    width: '100%',
     height: '100%',
-    borderRadius: 3,
   },
-  pendingFooterRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  aiTipTextCol: {
+    flex: 1,
+    paddingRight: 8,
   },
-  pendingDueDate: {
-    color: '#64748B',
+  aiTipHeading: {
+    fontSize: 14,
+    fontWeight: '800',
+    marginBottom: 2,
+  },
+  aiTipSub: {
     fontSize: 12,
+    lineHeight: 16,
     fontWeight: '500',
-  },
-  pendingPercentText: {
-    fontSize: 12,
-    fontWeight: '700',
   },
   quickManagerBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 8,
     gap: 8,
+    marginBottom: 10,
   },
   managerPillBtn: {
     flex: 1,
@@ -818,21 +852,119 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
-  emptyStateCard: {
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  welcomeModalCard: {
+    width: '100%',
+    borderRadius: 32,
+    padding: 24,
+    alignItems: 'center',
+    position: 'relative',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.2,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  modalCloseBtn: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    zIndex: 10,
+  },
+  brandHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    borderRadius: 18,
-    borderWidth: 1.5,
-    borderStyle: 'dashed',
+    gap: 8,
+    marginBottom: 16,
+  },
+  brandLogoCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#EEF2FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  brandTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+  },
+  welcomeRobotImage: {
+    width: 220,
+    height: 220,
+    marginBottom: 16,
+  },
+  welcomeHeadline: {
+    fontSize: 26,
+    fontWeight: '900',
+    textAlign: 'center',
+    letterSpacing: -0.5,
+    lineHeight: 32,
+    marginBottom: 8,
+  },
+  welcomeSubtitle: {
+    fontSize: 13,
+    textAlign: 'center',
+    lineHeight: 18,
+    paddingHorizontal: 16,
+    marginBottom: 24,
+  },
+  welcomeContinueBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  welcomeGradientBtn: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#6366F1',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  aiTipModalCard: {
+    width: '100%',
+    borderRadius: 24,
+    padding: 22,
+  },
+  aiTipModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  aiTipModalMascot: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+  },
+  aiTipModalTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  aiTipModalBody: {
+    fontSize: 14,
+    lineHeight: 22,
     marginBottom: 20,
   },
-  emptyCardTitle: {
+  startFocusBtn: {
+    backgroundColor: '#6366F1',
+    paddingVertical: 12,
+    borderRadius: 16,
+    alignItems: 'center',
+  },
+  startFocusBtnText: {
+    color: '#FFF',
     fontSize: 14,
     fontWeight: '700',
-  },
-  emptyCardSub: {
-    fontSize: 12,
-    marginTop: 2,
   },
 });

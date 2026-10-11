@@ -16,64 +16,64 @@ function InnerTabs() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarShowLabel: false,
-        tabBarActiveTintColor: '#8B5CF6',
-        tabBarInactiveTintColor: isDark ? '#9CA3AF' : '#A0AEC0',
+        tabBarShowLabel: true,
+        tabBarActiveTintColor: '#6366F1',
+        tabBarInactiveTintColor: isDark ? '#94A3B8' : '#94A3B8',
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '600',
+          marginTop: -2,
+          marginBottom: Platform.OS === 'ios' ? 0 : 4,
+        },
         tabBarStyle: {
           backgroundColor: colors.card,
           borderTopColor: isDark ? '#374151' : '#F1F5F9',
-          height: Platform.OS === 'ios' ? 76 : 64,
-          paddingBottom: Platform.OS === 'ios' ? 18 : 6,
-          paddingTop: 6,
-          borderTopLeftRadius: 26,
-          borderTopRightRadius: 26,
+          height: Platform.OS === 'ios' ? 82 : 68,
+          paddingBottom: Platform.OS === 'ios' ? 22 : 8,
+          paddingTop: 8,
+          borderTopLeftRadius: 28,
+          borderTopRightRadius: 28,
           position: 'absolute',
           bottom: 0,
           left: 0,
           right: 0,
           shadowColor: '#000',
-          shadowOffset: { width: 0, height: -3 },
-          shadowOpacity: 0.06,
-          shadowRadius: 10,
-          elevation: 10,
+          shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: 0.08,
+          shadowRadius: 12,
+          elevation: 12,
         },
       }}>
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Today',
+          title: 'Home',
           tabBarIcon: ({ color, focused }) => (
-            <View style={styles.iconContainer}>
-              <Ionicons
-                name={focused ? 'home' : 'home-outline'}
-                size={23}
-                color={focused ? '#8B5CF6' : color}
-              />
-              {focused && <View style={styles.activeDot} />}
-            </View>
+            <Ionicons
+              name={focused ? 'home' : 'home-outline'}
+              size={22}
+              color={focused ? '#6366F1' : color}
+            />
           ),
         }}
       />
       <Tabs.Screen
         name="schedule"
         options={{
-          title: 'Schedule',
+          title: 'Plan',
           tabBarIcon: ({ color, focused }) => (
-            <View style={styles.iconContainer}>
-              <Ionicons
-                name={focused ? 'calendar' : 'calendar-outline'}
-                size={23}
-                color={focused ? '#8B5CF6' : color}
-              />
-              {focused && <View style={styles.activeDot} />}
-            </View>
+            <Ionicons
+              name={focused ? 'calendar' : 'calendar-outline'}
+              size={22}
+              color={focused ? '#6366F1' : color}
+            />
           ),
         }}
       />
       <Tabs.Screen
         name="tasks"
         options={{
-          title: 'Add',
+          title: '',
           tabBarIcon: () => (
             <View style={styles.centerFab}>
               <Ionicons name="add" size={28} color="#FFFFFF" />
@@ -84,16 +84,13 @@ function InnerTabs() {
       <Tabs.Screen
         name="analytics"
         options={{
-          title: 'Notifications',
+          title: 'Progress',
           tabBarIcon: ({ color, focused }) => (
-            <View style={styles.iconContainer}>
-              <Ionicons
-                name={focused ? 'notifications' : 'notifications-outline'}
-                size={23}
-                color={focused ? '#8B5CF6' : color}
-              />
-              {focused && <View style={styles.activeDot} />}
-            </View>
+            <Ionicons
+              name={focused ? 'pie-chart' : 'pie-chart-outline'}
+              size={22}
+              color={focused ? '#6366F1' : color}
+            />
           ),
         }}
       />
@@ -102,14 +99,11 @@ function InnerTabs() {
         options={{
           title: 'Profile',
           tabBarIcon: ({ color, focused }) => (
-            <View style={styles.iconContainer}>
-              <Ionicons
-                name={focused ? 'person' : 'person-outline'}
-                size={23}
-                color={focused ? '#8B5CF6' : color}
-              />
-              {focused && <View style={styles.activeDot} />}
-            </View>
+            <Ionicons
+              name={focused ? 'person' : 'person-outline'}
+              size={22}
+              color={focused ? '#6366F1' : color}
+            />
           ),
         }}
       />
@@ -136,30 +130,18 @@ function InnerTabs() {
 }
 
 const styles = StyleSheet.create({
-  iconContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 38,
-  },
-  activeDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#8B5CF6',
-    marginTop: 3,
-  },
   centerFab: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#8B5CF6',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#6366F1',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: Platform.OS === 'ios' ? 24 : 18,
-    shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.38,
-    shadowRadius: 8,
+    marginBottom: Platform.OS === 'ios' ? 20 : 16,
+    shadowColor: '#6366F1',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
     elevation: 8,
   },
 });
