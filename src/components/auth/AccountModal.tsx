@@ -46,12 +46,16 @@ export const AccountModal: React.FC<Props> = ({ visible, onClose }) => {
         mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.85,
+        quality: 0.65,
+        base64: true,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         setIsUploadingImage(true);
-        const selectedUri = result.assets[0].uri;
+        const asset = result.assets[0];
+        const selectedUri = asset.base64
+          ? `data:image/jpeg;base64,${asset.base64}`
+          : asset.uri;
         await updateProfile({ avatarUrl: selectedUri });
       }
     } catch (err) {

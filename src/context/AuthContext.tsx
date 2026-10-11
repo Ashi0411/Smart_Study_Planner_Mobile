@@ -44,61 +44,108 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   // Fetch or create profile in PostgreSQL
-  const fetchProfile = useCallback(async (userId: string, userEmail: string, userMetaName?: string) => {
-    if (!isSupabaseConfigured) return;
+  const fetchProfile = useCallback(
+    async (
+      userId: string,
+      userEmail: string,
+      userMetaName?: string,
+      userMetaAvatar?: string
+    ) => {
+      // 1. Retrieve persistent local avatar or profile if present
+      let persistentAvatar = userMetaAvatar;
+      let localProfile: UserProfile | null = null;
+      try {
+        const stored = await AsyncStorage.getItem('@smart_planner_active_user');
+        if (stored) {
+          localProfile = JSON.parse(stored);
+          if (localProfile?.avatarUrl) {
+            persistentAvatar = persistentAvatar || localProfile.avatarUrl;
+          }
+        }
+        if (!persistentAvatar) {
+          const storedAvatar = await AsyncStorage.getItem('@smart_planner_user_avatar');
+          if (storedAvatar) persistentAvatar = storedAvatar;
+        }
+      } catch (e) {
+        console.warn('Error reading local profile/avatar', e);
+      }
 
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
+      if (!isSupabaseConfigured) {
+        if (localProfile) setProfile(localProfile);
+        return;
+      }
 
-      if (data && !error) {
-        setProfile({
-          id: data.id,
-          email: userEmail,
-          fullName: data.full_name || userMetaName || 'Student',
-          avatarUrl: data.avatar_url,
-          createdAt: data.created_at,
-        });
-      } else {
-        setProfile({
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .single();
+
+        const finalAvatar = data?.avatar_url || persistentAvatar;
+
+        if (data && !error) {
+          const prof: UserProfile = {
+            id: data.id,
+            email: userEmail,
+            fullName: data.full_name || userMetaName || localProfile?.fullName || 'Student',
+            avatarUrl: finalAvatar,
+            createdAt: data.created_at,
+          };
+          setProfile(prof);
+          await AsyncStorage.setItem('@smart_planner_active_user', JSON.stringify(prof));
+        } else {
+          const prof: UserProfile = {
+            id: userId,
+            email: userEmail,
+            fullName: userMetaName || localProfile?.fullName || 'Student',
+            avatarUrl: finalAvatar,
+          };
+          setProfile(prof);
+          await AsyncStorage.setItem('@smart_planner_active_user', JSON.stringify(prof));
+        }
+      } catch {
+        const fallbackProf: UserProfile = {
           id: userId,
           email: userEmail,
-          fullName: userMetaName || 'Student',
-        });
+          fullName: userMetaName || localProfile?.fullName || 'Student',
+          avatarUrl: persistentAvatar,
+        };
+        setProfile(fallbackProf);
+        await AsyncStorage.setItem('@smart_planner_active_user', JSON.stringify(fallbackProf));
       }
-    } catch {
-      setProfile({
-        id: userId,
-        email: userEmail,
-        fullName: userMetaName || 'Student',
-      });
-    }
-  }, []);
+    },
+    []
+  );
 
   // Initialize session on mount
   useEffect(() => {
     async function initSession() {
-      if (!isSupabaseConfigured) {
-        try {
-          const stored = await AsyncStorage.getItem('@smart_planner_active_user');
-          if (stored) {
-            const parsed = JSON.parse(stored);
-            // Purge old demo placeholder name if present
-            if (parsed.fullName === 'Alex Morgan' || parsed.email === 'student@smartplanner.io') {
-              await AsyncStorage.removeItem('@smart_planner_active_user');
-              setProfile(null);
-            } else {
-              setProfile(parsed);
-            }
+      // 1. Instantly load locally cached profile/avatar so UI never flashes empty
+      try {
+        const stored = await AsyncStorage.getItem('@smart_planner_active_user');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed.fullName !== 'Alex Morgan' && parsed.email !== 'student@smartplanner.io') {
+            setProfile(parsed);
           }
-        } catch (e) {
-          console.warn('Error reading local active user', e);
-        } finally {
-          setIsLoading(false);
+        } else {
+          const storedAvatar = await AsyncStorage.getItem('@smart_planner_user_avatar');
+          if (storedAvatar) {
+            setProfile({
+              id: 'usr-local',
+              email: '',
+              fullName: 'Student',
+              avatarUrl: storedAvatar,
+            });
+          }
         }
+      } catch (e) {
+        console.warn('Error reading local active user', e);
+      }
+
+      if (!isSupabaseConfigured) {
+        setIsLoading(false);
         return;
       }
 
@@ -111,7 +158,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           await fetchProfile(
             data.session.user.id,
             data.session.user.email || '',
-            data.session.user.user_metadata?.full_name
+            data.session.user.user_metadata?.full_name,
+            data.session.user.user_metadata?.avatar_url
           );
         }
       } catch (err) {
@@ -133,10 +181,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           await fetchProfile(
             newSession.user.id,
             newSession.user.email || '',
-            newSession.user.user_metadata?.full_name
+            newSession.user.user_metadata?.full_name,
+            newSession.user.user_metadata?.avatar_url
           );
-        } else {
-          setProfile(null);
+        } else if (!newSession) {
+          // If no session from Supabase, check local storage
+          const stored = await AsyncStorage.getItem('@smart_planner_active_user');
+          if (stored) {
+            setProfile(JSON.parse(stored));
+          } else {
+            setProfile(null);
+          }
         }
       }
     );
@@ -332,6 +387,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     try {
       await AsyncStorage.removeItem('@smart_planner_active_user');
+      await AsyncStorage.removeItem('@smart_planner_user_avatar');
     } catch (e) {
       console.warn('Error removing active user', e);
     }
@@ -365,17 +421,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateProfile = async (
     data: Partial<UserProfile>
   ): Promise<{ success: boolean; error?: string }> => {
-    if (!profile) return { success: false, error: 'No user logged in.' };
+    const currentProfile: UserProfile = profile || {
+      id: user?.id || 'usr-local',
+      email: user?.email || '',
+      fullName: user?.user_metadata?.full_name || 'Student',
+    };
 
-    const updated = { ...profile, ...data };
+    const updated: UserProfile = { ...currentProfile, ...data };
     setProfile(updated);
+
     try {
       await AsyncStorage.setItem('@smart_planner_active_user', JSON.stringify(updated));
+      if (updated.avatarUrl) {
+        await AsyncStorage.setItem('@smart_planner_user_avatar', updated.avatarUrl);
+      } else if (data.avatarUrl === undefined) {
+        await AsyncStorage.removeItem('@smart_planner_user_avatar');
+      }
     } catch (e) {
       console.warn('Error saving updated profile locally', e);
     }
 
     if (isSupabaseConfigured && user) {
+      try {
+        await supabase.auth.updateUser({
+          data: {
+            full_name: updated.fullName,
+            avatar_url: updated.avatarUrl,
+          },
+        });
+      } catch (e) {
+        console.warn('Notice updating Supabase user metadata:', e);
+      }
+
       try {
         await supabase.from('profiles').upsert({
           id: user.id,
@@ -384,8 +461,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           updated_at: new Date().toISOString(),
         });
       } catch (e: unknown) {
-        const msg = e instanceof Error ? e.message : 'Failed to sync profile.';
-        return { success: false, error: msg };
+        console.warn('Notice upserting to Supabase profiles:', e);
       }
     }
 
