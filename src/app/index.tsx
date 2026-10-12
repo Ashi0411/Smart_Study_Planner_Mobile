@@ -7,6 +7,7 @@ import {
   Pressable,
   Image,
   Modal,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,9 +20,11 @@ import { ModalAddSchedule } from '@/components/study/ModalAddSchedule';
 import { ModalAddWorkPlan } from '@/components/study/ModalAddWorkPlan';
 import { ModalAddCategory } from '@/components/study/ModalAddCategory';
 import { AccountModal } from '@/components/auth/AccountModal';
-import { StudyTask } from '@/types/study';
+import { StudyTask, Category, Subcategory } from '@/types/study';
 import { StudyCalendarCard, CalendarMode } from '@/components/study/StudyCalendarCard';
 import { CategoryCard } from '@/components/study/CategoryCard';
+import { ModalTaskFolder } from '@/components/study/ModalTaskFolder';
+import { ModalAIChat } from '@/components/study/ModalAIChat';
 
 
 
@@ -34,6 +37,7 @@ export default function HomeScreen() {
     tasks,
     themeMode,
     toggleTask,
+    addTask,
   } = useStudy();
 
   const [isTaskModalVisible, setIsTaskModalVisible] = useState(false);
@@ -42,6 +46,9 @@ export default function HomeScreen() {
   const [isCategoryModalVisible, setIsCategoryModalVisible] = useState(false);
   const [isAccountModalVisible, setIsAccountModalVisible] = useState(false);
   const [isWelcomeModalVisible, setIsWelcomeModalVisible] = useState(false);
+  const [isTaskFolderModalVisible, setIsTaskFolderModalVisible] = useState(false);
+  const [selectedFolderTask, setSelectedFolderTask] = useState<StudyTask | null>(null);
+  const [isAiChatVisible, setIsAiChatVisible] = useState(false);
 
   // Calendar view modes: daily | monthly | yearly
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<Date>(() => new Date());
@@ -84,6 +91,47 @@ export default function HomeScreen() {
   const selectedDateStr = useMemo(() => {
     return selectedCalendarDate.toISOString().split('T')[0];
   }, [selectedCalendarDate]);
+
+  // Open folder for a specific subcategory
+  const handleOpenSubcategoryFolder = useCallback(
+    (cat: Category, sub: Subcategory) => {
+      let taskInSub = tasks.find((t) => t.categoryId === cat.id && t.subcategoryId === sub.id);
+      if (!taskInSub) {
+        const newTask: StudyTask = {
+          id: 'task-' + Date.now(),
+          title: `${sub.name} Study Checklist`,
+          categoryId: cat.id,
+          subcategoryId: sub.id,
+          dueDate: selectedDateStr,
+          priority: 'high',
+          completed: false,
+          estimatedMinutes: 60,
+          progressPercent: 0,
+          subtasks: [
+            { id: 'st-' + Date.now() + '-1', title: `Review ${sub.name} Syllabus & Objectives`, completed: false },
+            { id: 'st-' + Date.now() + '-2', title: `Practice key problems / exam questions`, completed: false },
+          ],
+        };
+        addTask(newTask);
+        taskInSub = newTask;
+      }
+      setSelectedFolderTask(taskInSub);
+      setIsTaskFolderModalVisible(true);
+    },
+    [tasks, selectedDateStr, addTask]
+  );
+
+  // Open folder for a clicked task card
+  const handleOpenTaskFolder = useCallback(
+    (taskId: string) => {
+      const found = tasks.find((t) => t.id === taskId);
+      if (found) {
+        setSelectedFolderTask(found);
+        setIsTaskFolderModalVisible(true);
+      }
+    },
+    [tasks]
+  );
 
   // Dynamic Plan section title based on calendar selection
   const planSectionTitle = useMemo(() => {
@@ -131,6 +179,8 @@ export default function HomeScreen() {
         { bg: '#DCFCE7', color: '#10B981', icon: 'bulb-outline' as const },
       ];
       const pal = iconPalette[index % iconPalette.length];
+      const subsCount = t.subtasks?.length || 0;
+      const subsDone = t.subtasks?.filter((s) => s.completed).length || 0;
       return {
         id: t.id,
         title: t.title,
@@ -142,6 +192,8 @@ export default function HomeScreen() {
         iconColor: color || pal.color,
         isUserTask: true,
         completed: t.completed,
+        subsCount,
+        subsDone,
       };
     });
   }, [tasks, calendarMode, selectedCalendarDate, selectedDateStr, isViewingToday, getTaskCategoryInfo]);
@@ -306,7 +358,7 @@ export default function HomeScreen() {
                 key={item.id}
                 onPress={() => {
                   if ('isUserTask' in item && item.isUserTask) {
-                    toggleTask(item.id);
+                    handleOpenTaskFolder(item.id);
                   } else {
                     setIsTaskModalVisible(true);
                   }
@@ -340,24 +392,54 @@ export default function HomeScreen() {
                   </Text>
                   <View style={styles.planMetaRow}>
                     <Ionicons
+                      name="folder-outline"
+                      size={12}
+                      color={item.iconColor}
+                    />
+                    <Text
+                      style={[
+                        styles.planMetaText,
+                        { color: item.iconColor, fontWeight: '700' },
+                      ]}>
+                      {item.type}
+                    </Text>
+                    {item.subsCount > 0 ? (
+                      <>
+                        <Text style={[styles.planMetaDot, { color: isDark ? '#64748B' : '#CBD5E1' }]}>
+                          •
+                        </Text>
+                        <Ionicons
+                          name="checkbox-outline"
+                          size={12}
+                          color={isDark ? '#94A3B8' : '#64748B'}
+                        />
+                        <Text style={[styles.planMetaText, { color: isDark ? '#94A3B8' : '#64748B' }]}>
+                          {item.subsDone}/{item.subsCount} steps
+                        </Text>
+                      </>
+                    ) : null}
+                    <Text style={[styles.planMetaDot, { color: isDark ? '#64748B' : '#CBD5E1' }]}>
+                      •
+                    </Text>
+                    <Ionicons
                       name="time-outline"
-                      size={13}
+                      size={12}
                       color={isDark ? '#94A3B8' : '#64748B'}
                     />
                     <Text style={[styles.planMetaText, { color: isDark ? '#94A3B8' : '#64748B' }]}>
                       {item.duration}
                     </Text>
-                    <Text style={[styles.planMetaDot, { color: isDark ? '#64748B' : '#CBD5E1' }]}>
-                      •
-                    </Text>
-                    <Text style={[styles.planMetaText, { color: isDark ? '#94A3B8' : '#64748B' }]}>
-                      {item.type}
-                    </Text>
                   </View>
                 </View>
 
                 {/* Right Circular Progress Gauge */}
-                <View style={styles.gaugeContainer}>
+                <Pressable
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    toggleTask(item.id);
+                  }}
+                  hitSlop={8}
+                  style={styles.gaugeContainer}>
                   <View
                     style={[
                       styles.gaugeOuterRing,
@@ -373,7 +455,7 @@ export default function HomeScreen() {
                       {item.progress}%
                     </Text>
                   </View>
-                </View>
+                </Pressable>
               </Pressable>
             ))}
           </View>
@@ -466,7 +548,14 @@ export default function HomeScreen() {
 
           {/* Category Cards List */}
           {categories.map((cat) => (
-            <CategoryCard key={cat.id} category={cat} />
+            <CategoryCard
+              key={cat.id}
+              category={cat}
+              onSelectCategory={() => router.push('/tasks')}
+              onSelectSubcategory={(category, subcategory) =>
+                handleOpenSubcategoryFolder(category, subcategory)
+              }
+            />
           ))}
         </View>
 
@@ -554,6 +643,45 @@ export default function HomeScreen() {
         visible={isAccountModalVisible}
         onClose={() => setIsAccountModalVisible(false)}
       />
+
+      {/* Task Folder & Sub-tasks View with AI Bot */}
+      <ModalTaskFolder
+        key={selectedFolderTask?.id || 'none'}
+        visible={isTaskFolderModalVisible}
+        onClose={() => {
+          setIsTaskFolderModalVisible(false);
+          setSelectedFolderTask(null);
+        }}
+        task={
+          selectedFolderTask
+            ? tasks.find((t) => t.id === selectedFolderTask.id) || selectedFolderTask
+            : null
+        }
+      />
+
+      {/* Dedicated AI Study Bot Assistant Modal */}
+      <ModalAIChat
+        visible={isAiChatVisible}
+        onClose={() => setIsAiChatVisible(false)}
+      />
+
+      {/* Floating AI Study Bot Button */}
+      <Pressable
+        onPress={() => setIsAiChatVisible(true)}
+        style={({ pressed, hovered }: any) => [
+          styles.floatingAiFab,
+          hovered && styles.floatingAiFabHovered,
+          pressed && styles.btnPressed,
+        ]}>
+        <LinearGradient
+          colors={['#6366F1', '#8B5CF6']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.floatingAiFabGradient}>
+          <Ionicons name="sparkles" size={17} color="#FFF" />
+          <Text style={styles.floatingAiFabText}>Ask AI Bot</Text>
+        </LinearGradient>
+      </Pressable>
     </SafeAreaView>
   );
 }
@@ -998,5 +1126,36 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.35,
     shadowRadius: 12,
     elevation: 8,
+  },
+  floatingAiFab: {
+    position: 'absolute',
+    bottom: Platform.OS === 'ios' ? 84 : 76,
+    right: 20,
+    borderRadius: 24,
+    shadowColor: '#6366F1',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 8,
+    zIndex: 99,
+  },
+  floatingAiFabHovered: {
+    transform: [{ translateY: -2 }],
+    shadowOpacity: 0.45,
+    shadowRadius: 14,
+  },
+  floatingAiFabGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    paddingVertical: 11,
+    paddingHorizontal: 16,
+    borderRadius: 24,
+  },
+  floatingAiFabText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: -0.2,
   },
 });

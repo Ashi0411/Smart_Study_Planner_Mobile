@@ -8,15 +8,20 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Category } from '@/types/study';
+import { Category, Subcategory } from '@/types/study';
 import { useStudy } from '@/context/StudyContext';
 
 interface Props {
   category: Category;
   onSelectCategory?: (categoryId: string) => void;
+  onSelectSubcategory?: (category: Category, subcategory: Subcategory) => void;
 }
 
-export const CategoryCard: React.FC<Props> = ({ category, onSelectCategory }) => {
+export const CategoryCard: React.FC<Props> = ({
+  category,
+  onSelectCategory,
+  onSelectSubcategory,
+}) => {
   const {
     workPlans,
     tasks,
@@ -165,20 +170,27 @@ export const CategoryCard: React.FC<Props> = ({ category, onSelectCategory }) =>
       {/* Subcategories list */}
       <View style={styles.subcategoriesContainer}>
         {category.subcategories.map((sub) => (
-          <View
+          <Pressable
             key={sub.id}
-            style={[
+            onPress={() => onSelectSubcategory && onSelectSubcategory(category, sub)}
+            style={({ pressed, hovered }: any) => [
               styles.subPill,
               { backgroundColor: colors.backgroundElement, borderColor: colors.cardBorder },
+              hovered && { borderColor: category.color },
+              pressed && { opacity: 0.8 },
             ]}>
+            <Ionicons name="folder-outline" size={13} color={category.color} style={{ marginRight: 5 }} />
             <Text style={[styles.subPillText, { color: colors.text }]}>{sub.name}</Text>
             <Pressable
-              onPress={() => deleteSubcategory(category.id, sub.id)}
+              onPress={(e: any) => {
+                e?.stopPropagation?.();
+                deleteSubcategory(category.id, sub.id);
+              }}
               hitSlop={6}
               style={styles.subDel}>
               <Ionicons name="close" size={12} color={colors.textSecondary} />
             </Pressable>
-          </View>
+          </Pressable>
         ))}
 
         {/* Add Subcategory Trigger */}

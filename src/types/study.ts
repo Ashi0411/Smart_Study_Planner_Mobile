@@ -35,6 +35,12 @@ export interface WorkPlan {
   createdAt: string;
 }
 
+export interface TaskSubItem {
+  id: string;
+  title: string;
+  completed: boolean;
+}
+
 export interface StudyTask {
   id: string;
   title: string;
@@ -48,6 +54,7 @@ export interface StudyTask {
   estimatedMinutes?: number;
   progressPercent?: number;
   isToday?: boolean;
+  subtasks?: TaskSubItem[];
 }
 
 export interface ScheduleSession {

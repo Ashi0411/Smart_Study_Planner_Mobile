@@ -13,7 +13,7 @@ import { Colors, ColorPalette } from '@/constants/theme';
 
 const STORAGE_KEYS = {
   CATEGORIES: '@smart_planner_categories_v10',
-  TASKS: '@smart_planner_tasks_v6',
+  TASKS: '@smart_planner_tasks_v10',
   SCHEDULE: '@smart_planner_schedule_v6',
   WORK_PLANS: '@smart_planner_work_plans_v6',
   FOCUS_LOGS: '@smart_planner_focus_logs_v6',
@@ -46,7 +46,54 @@ export const INITIAL_CATEGORIES: Category[] = [
   },
 ];
 
-export const INITIAL_TASKS: StudyTask[] = [];
+export const INITIAL_TASKS: StudyTask[] = [
+  {
+    id: 'task-uni-1',
+    title: 'Software Engineering Lab Assignment',
+    categoryId: 'cat-uni-works',
+    subcategoryId: 'sub-uni-1',
+    dueDate: new Date().toISOString().split('T')[0],
+    priority: 'high',
+    completed: false,
+    estimatedMinutes: 60,
+    progressPercent: 33,
+    subtasks: [
+      { id: 'st-1', title: 'System Architecture & ER Diagram', completed: true },
+      { id: 'st-2', title: 'Backend API Implementation', completed: false },
+      { id: 'st-3', title: 'Lab Report Write-up & PDF Export', completed: false },
+    ],
+  },
+  {
+    id: 'task-uni-2',
+    title: 'Database Systems Midterm Revision',
+    categoryId: 'cat-uni-works',
+    subcategoryId: 'sub-uni-2',
+    dueDate: new Date().toISOString().split('T')[0],
+    priority: 'high',
+    completed: false,
+    estimatedMinutes: 90,
+    progressPercent: 50,
+    subtasks: [
+      { id: 'st-4', title: 'Relational Algebra & Normalization Review', completed: true },
+      { id: 'st-5', title: 'Past Exam Question Solving (2024 Paper)', completed: false },
+    ],
+  },
+  {
+    id: 'task-eng-1',
+    title: 'IELTS Academic Writing & Speaking Drill',
+    categoryId: 'cat-eng-work',
+    subcategoryId: 'sub-eng-1',
+    dueDate: new Date().toISOString().split('T')[0],
+    priority: 'medium',
+    completed: false,
+    estimatedMinutes: 45,
+    progressPercent: 0,
+    subtasks: [
+      { id: 'st-6', title: 'Task 1 Academic Graph Analysis & Vocabulary', completed: false },
+      { id: 'st-7', title: 'Speaking Part 2 Cue Card 2-minute Presentation', completed: false },
+    ],
+  },
+];
 
 export const INITIAL_WORK_PLANS: WorkPlan[] = [];
 
@@ -88,6 +135,11 @@ interface StudyContextType {
   addTask: (task: Omit<StudyTask, 'id' | 'completed'>) => void;
   toggleTask: (taskId: string) => void;
   deleteTask: (taskId: string) => void;
+  updateTask: (taskId: string, updates: Partial<StudyTask>) => void;
+  toggleTaskSubItem: (taskId: string, subItemId: string) => void;
+  addTaskSubItem: (taskId: string, title: string) => void;
+  deleteTaskSubItem: (taskId: string, subItemId: string) => void;
+  addGeneratedSubtasks: (taskId: string, items: { title: string }[]) => void;
   // Schedule Actions
   addScheduleSession: (session: Omit<ScheduleSession, 'id' | 'completed'>) => void;
   toggleScheduleSession: (sessionId: string) => void;
@@ -172,39 +224,17 @@ export const StudyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             (t: StudyTask) =>
               t.categoryId !== 'cat-cyber' &&
               t.categoryId !== 'cat-uiux' &&
-              !t.id.startsWith('task-') &&
-              t.title !== 'Meeting With Client' &&
-              t.title !== 'Redesign Workbox' &&
-              t.title !== 'Recording Workshop' &&
-              t.title !== 'Create New Blog Post' &&
-              t.title !== 'Landing Page Design'
+              !['Meeting With Client', 'Redesign Workbox', 'Recording Workshop', 'Create New Blog Post', 'Landing Page Design'].includes(t.title)
           );
-          setTasks(filtered);
-        } else {
-          // Check if legacy storage had tasks and purge mock tasks
-          const legacyV5 = await AsyncStorage.getItem('@smart_planner_tasks_v5');
-          if (legacyV5) {
-            try {
-              const parsed = JSON.parse(legacyV5);
-              const filtered = parsed.filter(
-                (t: StudyTask) =>
-                  t.categoryId !== 'cat-cyber' &&
-                  t.categoryId !== 'cat-uiux' &&
-                  !t.id.startsWith('task-') &&
-                  t.title !== 'Meeting With Client' &&
-                  t.title !== 'Redesign Workbox' &&
-                  t.title !== 'Recording Workshop' &&
-                  t.title !== 'Create New Blog Post' &&
-                  t.title !== 'Landing Page Design'
-              );
-              setTasks(filtered);
-              await AsyncStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(filtered));
-            } catch {
-              setTasks([]);
-            }
+          if (filtered.length > 0) {
+            setTasks(filtered);
           } else {
-            setTasks([]);
+            setTasks(INITIAL_TASKS);
+            await AsyncStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(INITIAL_TASKS));
           }
+        } else {
+          setTasks(INITIAL_TASKS);
+          await AsyncStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(INITIAL_TASKS));
         }
 
         if (storedSchedule) setSchedule(JSON.parse(storedSchedule));
@@ -485,6 +515,106 @@ export const StudyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     saveTasks(tasks.filter((t) => t.id !== taskId));
   };
 
+  const updateTask = (taskId: string, updates: Partial<StudyTask>) => {
+    const updated = tasks.map((t) => {
+      if (t.id === taskId) {
+        return { ...t, ...updates };
+      }
+      return t;
+    });
+    saveTasks(updated);
+  };
+
+  const toggleTaskSubItem = (taskId: string, subItemId: string) => {
+    const updated = tasks.map((t) => {
+      if (t.id === taskId) {
+        const currentSubs = t.subtasks || [];
+        const updatedSubs = currentSubs.map((st) =>
+          st.id === subItemId ? { ...st, completed: !st.completed } : st
+        );
+        const doneCount = updatedSubs.filter((st) => st.completed).length;
+        const total = updatedSubs.length;
+        const progress = total > 0 ? Math.round((doneCount / total) * 100) : (t.completed ? 100 : 0);
+        const isAllDone = total > 0 && doneCount === total;
+        return {
+          ...t,
+          subtasks: updatedSubs,
+          progressPercent: progress,
+          completed: isAllDone,
+          completedAt: isAllDone ? new Date().toISOString() : undefined,
+        };
+      }
+      return t;
+    });
+    saveTasks(updated);
+  };
+
+  const addTaskSubItem = (taskId: string, title: string) => {
+    if (!title.trim()) return;
+    const updated = tasks.map((t) => {
+      if (t.id === taskId) {
+        const currentSubs = t.subtasks || [];
+        const newSubItem = {
+          id: 'st-' + Date.now().toString() + '-' + Math.floor(Math.random() * 1000),
+          title: title.trim(),
+          completed: false,
+        };
+        const updatedSubs = [...currentSubs, newSubItem];
+        const doneCount = updatedSubs.filter((st) => st.completed).length;
+        const progress = Math.round((doneCount / updatedSubs.length) * 100);
+        return {
+          ...t,
+          subtasks: updatedSubs,
+          progressPercent: progress,
+          completed: false,
+        };
+      }
+      return t;
+    });
+    saveTasks(updated);
+  };
+
+  const deleteTaskSubItem = (taskId: string, subItemId: string) => {
+    const updated = tasks.map((t) => {
+      if (t.id === taskId) {
+        const currentSubs = t.subtasks || [];
+        const updatedSubs = currentSubs.filter((st) => st.id !== subItemId);
+        const doneCount = updatedSubs.filter((st) => st.completed).length;
+        const progress = updatedSubs.length > 0 ? Math.round((doneCount / updatedSubs.length) * 100) : (t.completed ? 100 : 0);
+        return {
+          ...t,
+          subtasks: updatedSubs,
+          progressPercent: progress,
+        };
+      }
+      return t;
+    });
+    saveTasks(updated);
+  };
+
+  const addGeneratedSubtasks = (taskId: string, items: { title: string }[]) => {
+    const updated = tasks.map((t) => {
+      if (t.id === taskId) {
+        const currentSubs = t.subtasks || [];
+        const newItems = items.map((it, idx) => ({
+          id: 'st-ai-' + Date.now() + '-' + idx,
+          title: it.title,
+          completed: false,
+        }));
+        const updatedSubs = [...currentSubs, ...newItems];
+        const doneCount = updatedSubs.filter((st) => st.completed).length;
+        const progress = Math.round((doneCount / updatedSubs.length) * 100);
+        return {
+          ...t,
+          subtasks: updatedSubs,
+          progressPercent: progress,
+        };
+      }
+      return t;
+    });
+    saveTasks(updated);
+  };
+
   // Schedule Actions
   const addScheduleSession = (sessionData: Omit<ScheduleSession, 'id' | 'completed'>) => {
     const newSession: ScheduleSession = {
@@ -575,6 +705,11 @@ export const StudyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         addTask,
         toggleTask,
         deleteTask,
+        updateTask,
+        toggleTaskSubItem,
+        addTaskSubItem,
+        deleteTaskSubItem,
+        addGeneratedSubtasks,
         addScheduleSession,
         toggleScheduleSession,
         deleteScheduleSession,
