@@ -12,7 +12,7 @@ import {
 import { Colors, ColorPalette } from '@/constants/theme';
 
 const STORAGE_KEYS = {
-  CATEGORIES: '@smart_planner_categories_v10',
+  CATEGORIES: '@smart_planner_categories_v12',
   TASKS: '@smart_planner_tasks_v10',
   SCHEDULE: '@smart_planner_schedule_v6',
   WORK_PLANS: '@smart_planner_work_plans_v6',
@@ -193,23 +193,19 @@ export const StudyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           const parsed = JSON.parse(storedCategories);
           const filtered = parsed.filter(
             (c: Category) =>
-              c.id !== 'cat-work' &&
-              c.id !== 'cat-uni' &&
-              c.id !== 'cat-eng' &&
-              c.id !== 'cat-mkt' &&
-              c.id !== 'cat-pers' &&
-              c.id !== 'cat-cyber' &&
-              c.id !== 'cat-uiux' &&
-              !['digital marketing', 'personal goals', 'work plans', 'cybersecurity', 'ui/ux'].includes(
-                c.name.toLowerCase()
-              )
+              c.id === 'cat-uni-works' ||
+              c.id === 'cat-eng-work' ||
+              c.name.toLowerCase().includes('university') ||
+              c.name.toLowerCase().includes('english')
           );
 
-          const hasUni = filtered.some((c: Category) => c.name.toLowerCase().includes('university'));
-          const hasEng = filtered.some((c: Category) => c.name.toLowerCase().includes('english'));
-          let finalCategories = [...filtered];
-          if (!hasUni) finalCategories.unshift(INITIAL_CATEGORIES[0]);
-          if (!hasEng) finalCategories.push(INITIAL_CATEGORIES[1]);
+          let finalCategories = filtered.length > 0 ? filtered : INITIAL_CATEGORIES;
+          if (!finalCategories.some((c: Category) => c.name.toLowerCase().includes('university'))) {
+            finalCategories = [INITIAL_CATEGORIES[0], ...finalCategories];
+          }
+          if (!finalCategories.some((c: Category) => c.name.toLowerCase().includes('english'))) {
+            finalCategories = [...finalCategories, INITIAL_CATEGORIES[1]];
+          }
 
           setCategories(finalCategories);
           await AsyncStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(finalCategories));

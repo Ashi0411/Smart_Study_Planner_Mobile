@@ -122,7 +122,10 @@ export const CategoryCard: React.FC<Props> = ({
             </View>
           ) : (
             <View style={styles.titleWrap}>
-              <Text style={[styles.name, { color: colors.text }]}>{category.name}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Text style={[styles.name, { color: colors.text }]}>{category.name}</Text>
+                <Ionicons name="chevron-forward" size={16} color={category.color} />
+              </View>
               <Text style={[styles.metaCount, { color: colors.textSecondary }]}>
                 {plansInCat.length} Plans • {tasksInCat.length} Tasks • {category.subcategories.length} Subs
               </Text>

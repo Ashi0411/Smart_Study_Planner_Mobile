@@ -20,10 +20,11 @@ import { ModalAddSchedule } from '@/components/study/ModalAddSchedule';
 import { ModalAddWorkPlan } from '@/components/study/ModalAddWorkPlan';
 import { ModalAddCategory } from '@/components/study/ModalAddCategory';
 import { AccountModal } from '@/components/auth/AccountModal';
-import { StudyTask, Category, Subcategory } from '@/types/study';
+import { StudyTask, Category } from '@/types/study';
 import { StudyCalendarCard, CalendarMode } from '@/components/study/StudyCalendarCard';
 import { CategoryCard } from '@/components/study/CategoryCard';
 import { ModalTaskFolder } from '@/components/study/ModalTaskFolder';
+import { ModalCategoryFolder } from '@/components/study/ModalCategoryFolder';
 import { ModalAIChat } from '@/components/study/ModalAIChat';
 
 
@@ -37,7 +38,6 @@ export default function HomeScreen() {
     tasks,
     themeMode,
     toggleTask,
-    addTask,
   } = useStudy();
 
   const [isTaskModalVisible, setIsTaskModalVisible] = useState(false);
@@ -48,6 +48,9 @@ export default function HomeScreen() {
   const [isWelcomeModalVisible, setIsWelcomeModalVisible] = useState(false);
   const [isTaskFolderModalVisible, setIsTaskFolderModalVisible] = useState(false);
   const [selectedFolderTask, setSelectedFolderTask] = useState<StudyTask | null>(null);
+  const [selectedFolderCategory, setSelectedFolderCategory] = useState<Category | null>(null);
+  const [initialSubFolderId, setInitialSubFolderId] = useState<string | undefined>(undefined);
+  const [isCategoryFolderModalVisible, setIsCategoryFolderModalVisible] = useState(false);
   const [isAiChatVisible, setIsAiChatVisible] = useState(false);
 
   // Calendar view modes: daily | monthly | yearly
@@ -92,33 +95,15 @@ export default function HomeScreen() {
     return selectedCalendarDate.toISOString().split('T')[0];
   }, [selectedCalendarDate]);
 
-  // Open folder for a specific subcategory
-  const handleOpenSubcategoryFolder = useCallback(
-    (cat: Category, sub: Subcategory) => {
-      let taskInSub = tasks.find((t) => t.categoryId === cat.id && t.subcategoryId === sub.id);
-      if (!taskInSub) {
-        const newTask: StudyTask = {
-          id: 'task-' + Date.now(),
-          title: `${sub.name} Study Checklist`,
-          categoryId: cat.id,
-          subcategoryId: sub.id,
-          dueDate: selectedDateStr,
-          priority: 'high',
-          completed: false,
-          estimatedMinutes: 60,
-          progressPercent: 0,
-          subtasks: [
-            { id: 'st-' + Date.now() + '-1', title: `Review ${sub.name} Syllabus & Objectives`, completed: false },
-            { id: 'st-' + Date.now() + '-2', title: `Practice key problems / exam questions`, completed: false },
-          ],
-        };
-        addTask(newTask);
-        taskInSub = newTask;
-      }
-      setSelectedFolderTask(taskInSub);
-      setIsTaskFolderModalVisible(true);
+
+  // Open Category Folder Interface from main category or subcategory
+  const handleOpenCategoryFolder = useCallback(
+    (cat: Category, subId?: string) => {
+      setSelectedFolderCategory(cat);
+      setInitialSubFolderId(subId || 'all');
+      setIsCategoryFolderModalVisible(true);
     },
-    [tasks, selectedDateStr, addTask]
+    []
   );
 
   // Open folder for a clicked task card
@@ -551,9 +536,9 @@ export default function HomeScreen() {
             <CategoryCard
               key={cat.id}
               category={cat}
-              onSelectCategory={() => router.push('/tasks')}
+              onSelectCategory={() => handleOpenCategoryFolder(cat)}
               onSelectSubcategory={(category, subcategory) =>
-                handleOpenSubcategoryFolder(category, subcategory)
+                handleOpenCategoryFolder(category, subcategory.id)
               }
             />
           ))}
@@ -663,6 +648,23 @@ export default function HomeScreen() {
       <ModalAIChat
         visible={isAiChatVisible}
         onClose={() => setIsAiChatVisible(false)}
+      />
+
+      {/* Main Category Folder & Sub-tasks Hub Modal with AI Bot */}
+      <ModalCategoryFolder
+        key={selectedFolderCategory?.id ? `${selectedFolderCategory.id}-${initialSubFolderId}` : 'none'}
+        visible={isCategoryFolderModalVisible}
+        onClose={() => {
+          setIsCategoryFolderModalVisible(false);
+          setSelectedFolderCategory(null);
+          setInitialSubFolderId(undefined);
+        }}
+        category={
+          selectedFolderCategory
+            ? categories.find((c) => c.id === selectedFolderCategory.id) || selectedFolderCategory
+            : null
+        }
+        initialSubcategoryId={initialSubFolderId}
       />
 
       {/* Floating AI Study Bot Button */}
