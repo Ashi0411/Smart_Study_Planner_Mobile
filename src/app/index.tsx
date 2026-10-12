@@ -418,68 +418,6 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* Action Buttons: Create Category & Create Work Plan */}
-        <View style={styles.actionButtonsContainer}>
-          {/* Create Category Button */}
-          <Pressable
-            onPress={() => setIsCategoryModalVisible(true)}
-            style={({ pressed, hovered }: any) => [
-              styles.actionLightBtn,
-              {
-                backgroundColor: isDark
-                  ? (hovered ? '#1E1B4B' : '#0F172A')
-                  : (hovered ? '#EEF2FF' : '#F8FAFC'),
-                borderColor: isDark
-                  ? (hovered ? '#818CF8' : '#6366F1')
-                  : (hovered ? '#6366F1' : '#818CF8'),
-              },
-              (hovered || pressed) && styles.actionLightBtnHovered,
-              pressed && styles.btnPressed,
-            ]}>
-            <Ionicons
-              name="folder-outline"
-              size={18}
-              color={isDark ? '#C7D2FE' : '#4F46E5'}
-            />
-            <Text
-              style={[
-                styles.actionLightBtnText,
-                { color: isDark ? '#E0E7FF' : '#4338CA' },
-              ]}>
-              Create Category
-            </Text>
-          </Pressable>
-
-          {/* Create Work Plan Button */}
-          <Pressable
-            onPress={() => setIsWorkPlanModalVisible(true)}
-            style={({ pressed, hovered }: any) => [
-              styles.actionLightBtn,
-              {
-                backgroundColor: isDark
-                  ? (hovered ? '#1E1B4B' : '#0F172A')
-                  : (hovered ? '#EEF2FF' : '#F8FAFC'),
-                borderColor: isDark
-                  ? (hovered ? '#818CF8' : '#6366F1')
-                  : (hovered ? '#6366F1' : '#818CF8'),
-              },
-              (hovered || pressed) && styles.actionLightBtnHovered,
-              pressed && styles.btnPressed,
-            ]}>
-            <Ionicons
-              name="sparkles-outline"
-              size={18}
-              color={isDark ? '#C7D2FE' : '#4F46E5'}
-            />
-            <Text
-              style={[
-                styles.actionLightBtnText,
-                { color: isDark ? '#E0E7FF' : '#4338CA' },
-              ]}>
-              Create Work Plan
-            </Text>
-          </Pressable>
-        </View>
 
         {/* Categories & Subjects Section */}
         <View style={styles.categoriesSection}>
@@ -921,38 +859,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
   },
-  actionButtonsContainer: {
-    marginTop: 8,
-    marginBottom: 20,
-    gap: 12,
-  },
-  actionLightBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 18,
-    borderWidth: 1.5,
-    gap: 8,
-    shadowColor: '#6366F1',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    elevation: 2,
-  },
-  actionLightBtnHovered: {
-    transform: [{ translateY: -1.5 }],
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.18,
-    shadowRadius: 7,
-    elevation: 3,
-  },
-  actionLightBtnText: {
-    fontSize: 15,
-    fontWeight: '700',
-    letterSpacing: -0.2,
-  },
+
   categoriesSection: {
     marginTop: 6,
     marginBottom: 20,
