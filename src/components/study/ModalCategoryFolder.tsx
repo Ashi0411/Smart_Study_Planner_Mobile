@@ -91,10 +91,7 @@ export const ModalCategoryFolder: React.FC<Props> = ({
       priority: 'high',
       estimatedMinutes: 60,
       progressPercent: 0,
-      subtasks: [
-        { id: `st-1-${Math.random().toString(36).slice(2, 6)}`, title: 'Phase 1: Research & Outline', completed: false },
-        { id: `st-2-${Math.random().toString(36).slice(2, 6)}`, title: 'Phase 2: Core Implementation', completed: false },
-      ],
+      subtasks: [],
     });
     setNewTaskTitle('');
   };

@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams } from 'expo-router';
 import { useStudy } from '@/context/StudyContext';
 import { TaskItem } from '@/components/study/TaskItem';
 import { ModalAddTask } from '@/components/study/ModalAddTask';
@@ -17,26 +18,27 @@ type FilterType = 'all' | 'pending' | 'completed' | 'high';
 
 export default function TasksScreen() {
   const { tasks, categories, colors } = useStudy();
+  const params = useLocalSearchParams<{ categoryId?: string; subcategoryId?: string }>();
+
+  const activeCategoryId = params.categoryId || categories[0]?.id || 'cat-uni-works';
+  const activeCategory = categories.find((c) => c.id === activeCategoryId) || categories[0];
 
   const [activeFilter, setActiveFilter] = useState<FilterType>('pending');
-  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('all');
-  const [selectedSubcategoryFilter, setSelectedSubcategoryFilter] = useState<string>('all');
+  const [selectedSubcategoryFilter, setSelectedSubcategoryFilter] = useState<string>(
+    params.subcategoryId || 'all'
+  );
   const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
 
-  // Selected category object
-  const activeCategory = categories.find((c) => c.id === selectedCategoryFilter);
-
-  // Filtering
+  // Filtering - strictly show tasks relevant to this category!
   const filteredTasks = tasks.filter((t) => {
+    if (activeCategory && t.categoryId !== activeCategory.id) {
+      return false;
+    }
+
     // Status filter
     if (activeFilter === 'pending' && t.completed) return false;
     if (activeFilter === 'completed' && !t.completed) return false;
     if (activeFilter === 'high' && t.priority !== 'high') return false;
-
-    // Category filter
-    if (selectedCategoryFilter !== 'all' && t.categoryId !== selectedCategoryFilter) {
-      return false;
-    }
 
     // Subcategory filter
     if (
@@ -49,15 +51,35 @@ export default function TasksScreen() {
     return true;
   });
 
-  const pendingCount = tasks.filter((t) => !t.completed).length;
-  const completedCount = tasks.filter((t) => t.completed).length;
+  const categoryTasks = tasks.filter(
+    (t) => !activeCategory || t.categoryId === activeCategory.id
+  );
+  const pendingCount = categoryTasks.filter((t) => !t.completed).length;
+  const completedCount = categoryTasks.filter((t) => t.completed).length;
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
       {/* Top Header */}
       <View style={styles.header}>
-        <View>
-          <Text style={[styles.title, { color: colors.text }]}>Tasks & Goals</Text>
+        <View style={styles.headerTitleWrap}>
+          <View style={styles.categoryBadgeRow}>
+            {activeCategory && (
+              <View
+                style={[
+                  styles.catIconCircle,
+                  { backgroundColor: activeCategory.color + '1E' },
+                ]}>
+                <Ionicons
+                  name={(activeCategory.icon as any) || 'school-outline'}
+                  size={20}
+                  color={activeCategory.color}
+                />
+              </View>
+            )}
+            <Text style={[styles.title, { color: colors.text }]}>
+              {activeCategory?.name || 'University Works'}
+            </Text>
+          </View>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
             {pendingCount} pending • {completedCount} completed
           </Text>
@@ -65,7 +87,7 @@ export default function TasksScreen() {
 
         <Pressable
           onPress={() => setIsModalVisible(true)}
-          style={[styles.addBtn, { backgroundColor: colors.primary }]}>
+          style={[styles.addBtn, { backgroundColor: activeCategory?.color || colors.primary }]}>
           <Ionicons name="add" size={20} color="#FFF" />
           <Text style={styles.addBtnText}>New Task</Text>
         </Pressable>
@@ -75,7 +97,7 @@ export default function TasksScreen() {
       <View style={[styles.filterBar, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
         {[
           { key: 'pending', label: `Pending (${pendingCount})` },
-          { key: 'all', label: `All (${tasks.length})` },
+          { key: 'all', label: `All (${categoryTasks.length})` },
           { key: 'high', label: 'Urgent 🔥' },
           { key: 'completed', label: `Done (${completedCount})` },
         ].map((f) => {
@@ -86,7 +108,7 @@ export default function TasksScreen() {
               onPress={() => setActiveFilter(f.key as FilterType)}
               style={[
                 styles.filterTab,
-                isSelected && { backgroundColor: colors.primary },
+                isSelected && { backgroundColor: activeCategory?.color || colors.primary },
               ]}>
               <Text
                 style={[
@@ -100,67 +122,9 @@ export default function TasksScreen() {
         })}
       </View>
 
-      {/* Category Filter Pills */}
-      <View style={styles.subjectFilterWrap}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.subjectScroll}>
-          <Pressable
-            onPress={() => {
-              setSelectedCategoryFilter('all');
-              setSelectedSubcategoryFilter('all');
-            }}
-            style={[
-              styles.subPill,
-              {
-                backgroundColor: selectedCategoryFilter === 'all' ? colors.primary : colors.card,
-                borderColor: selectedCategoryFilter === 'all' ? colors.primary : colors.cardBorder,
-              },
-            ]}>
-            <Text
-              style={[
-                styles.subPillText,
-                { color: selectedCategoryFilter === 'all' ? '#FFF' : colors.text },
-              ]}>
-              All Categories
-            </Text>
-          </Pressable>
-
-          {categories.map((cat) => {
-            const isSelected = selectedCategoryFilter === cat.id;
-            return (
-              <Pressable
-                key={cat.id}
-                onPress={() => {
-                  setSelectedCategoryFilter(cat.id);
-                  setSelectedSubcategoryFilter('all');
-                }}
-                style={[
-                  styles.subPill,
-                  {
-                    backgroundColor: isSelected ? cat.color : colors.card,
-                    borderColor: isSelected ? cat.color : colors.cardBorder,
-                  },
-                ]}>
-                <Ionicons
-                  name={(cat.icon as any) || 'folder'}
-                  size={12}
-                  color={isSelected ? '#FFF' : cat.color}
-                />
-                <Text
-                  style={[
-                    styles.subPillText,
-                    { color: isSelected ? '#FFF' : colors.text },
-                  ]}>
-                  {cat.name}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-      </View>
-
-      {/* Subcategory Filter Pills (if active category selected and has subcategories) */}
+      {/* Subcategory Filter Pills for Active Category */}
       {activeCategory && activeCategory.subcategories.length > 0 && (
-        <View style={[styles.subjectFilterWrap, { marginTop: -4 }]}>
+        <View style={styles.subjectFilterWrap}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.subjectScroll}>
             <Pressable
               onPress={() => setSelectedSubcategoryFilter('all')}
@@ -169,13 +133,12 @@ export default function TasksScreen() {
                 {
                   backgroundColor: selectedSubcategoryFilter === 'all' ? activeCategory.color : colors.card,
                   borderColor: selectedSubcategoryFilter === 'all' ? activeCategory.color : colors.cardBorder,
-                  paddingVertical: 4,
                 },
               ]}>
               <Text
                 style={[
                   styles.subPillText,
-                  { color: selectedSubcategoryFilter === 'all' ? '#FFF' : colors.text, fontSize: 11 },
+                  { color: selectedSubcategoryFilter === 'all' ? '#FFF' : colors.text },
                 ]}>
                 All Subcategories
               </Text>
@@ -192,13 +155,12 @@ export default function TasksScreen() {
                     {
                       backgroundColor: isSelected ? activeCategory.color : colors.card,
                       borderColor: isSelected ? activeCategory.color : colors.cardBorder,
-                      paddingVertical: 4,
                     },
                   ]}>
                   <Text
                     style={[
                       styles.subPillText,
-                      { color: isSelected ? '#FFF' : colors.text, fontSize: 11 },
+                      { color: isSelected ? '#FFF' : colors.text },
                     ]}>
                     {sub.name}
                   </Text>
@@ -247,8 +209,24 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 16,
   },
+  headerTitleWrap: {
+    flex: 1,
+    marginRight: 12,
+  },
+  categoryBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  catIconCircle: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   title: {
-    fontSize: 26,
+    fontSize: 22,
     fontWeight: '800',
     letterSpacing: -0.5,
   },

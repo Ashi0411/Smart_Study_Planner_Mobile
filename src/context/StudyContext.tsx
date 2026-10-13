@@ -13,7 +13,7 @@ import { Colors, ColorPalette } from '@/constants/theme';
 
 const STORAGE_KEYS = {
   CATEGORIES: '@smart_planner_categories_v12',
-  TASKS: '@smart_planner_tasks_v10',
+  TASKS: '@smart_planner_tasks_v13',
   SCHEDULE: '@smart_planner_schedule_v6',
   WORK_PLANS: '@smart_planner_work_plans_v6',
   FOCUS_LOGS: '@smart_planner_focus_logs_v6',
@@ -56,12 +56,8 @@ export const INITIAL_TASKS: StudyTask[] = [
     priority: 'high',
     completed: false,
     estimatedMinutes: 60,
-    progressPercent: 33,
-    subtasks: [
-      { id: 'st-1', title: 'System Architecture & ER Diagram', completed: true },
-      { id: 'st-2', title: 'Backend API Implementation', completed: false },
-      { id: 'st-3', title: 'Lab Report Write-up & PDF Export', completed: false },
-    ],
+    progressPercent: 0,
+    subtasks: [],
   },
   {
     id: 'task-uni-2',
@@ -72,11 +68,8 @@ export const INITIAL_TASKS: StudyTask[] = [
     priority: 'high',
     completed: false,
     estimatedMinutes: 90,
-    progressPercent: 50,
-    subtasks: [
-      { id: 'st-4', title: 'Relational Algebra & Normalization Review', completed: true },
-      { id: 'st-5', title: 'Past Exam Question Solving (2024 Paper)', completed: false },
-    ],
+    progressPercent: 0,
+    subtasks: [],
   },
   {
     id: 'task-eng-1',
@@ -88,10 +81,7 @@ export const INITIAL_TASKS: StudyTask[] = [
     completed: false,
     estimatedMinutes: 45,
     progressPercent: 0,
-    subtasks: [
-      { id: 'st-6', title: 'Task 1 Academic Graph Analysis & Vocabulary', completed: false },
-      { id: 'st-7', title: 'Speaking Part 2 Cue Card 2-minute Presentation', completed: false },
-    ],
+    subtasks: [],
   },
 ];
 
@@ -222,8 +212,26 @@ export const StudyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               t.categoryId !== 'cat-uiux' &&
               !['Meeting With Client', 'Redesign Workbox', 'Recording Workshop', 'Create New Blog Post', 'Landing Page Design'].includes(t.title)
           );
-          if (filtered.length > 0) {
-            setTasks(filtered);
+          const cleaned = filtered.map((t: StudyTask) => ({
+            ...t,
+            subtasks: (t.subtasks || []).filter(
+              (st) =>
+                !st.title.startsWith('Phase 1') &&
+                !st.title.startsWith('Phase 2') &&
+                !st.title.includes('ER Diagram') &&
+                !st.title.includes('Relational Algebra') &&
+                !st.title.includes('Academic Graph') &&
+                !st.id.startsWith('st-1') &&
+                !st.id.startsWith('st-2') &&
+                !st.id.startsWith('st-3') &&
+                !st.id.startsWith('st-4') &&
+                !st.id.startsWith('st-5') &&
+                !st.id.startsWith('st-6') &&
+                !st.id.startsWith('st-7')
+            ),
+          }));
+          if (cleaned.length > 0) {
+            setTasks(cleaned);
           } else {
             setTasks(INITIAL_TASKS);
             await AsyncStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(INITIAL_TASKS));
