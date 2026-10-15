@@ -73,10 +73,10 @@ function InnerTabs() {
       <Tabs.Screen
         name="tasks"
         options={{
-          title: '',
-          tabBarIcon: () => (
-            <View style={styles.centerFab}>
-              <Ionicons name="add" size={28} color="#FFFFFF" />
+          title: 'Works',
+          tabBarIcon: ({ focused }) => (
+            <View style={[styles.centerFab, focused && styles.centerFabFocused]}>
+              <Ionicons name="school" size={24} color="#FFFFFF" />
             </View>
           ),
         }}
@@ -143,6 +143,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.35,
     shadowRadius: 10,
     elevation: 8,
+  },
+  centerFabFocused: {
+    backgroundColor: '#4F46E5',
+    transform: [{ scale: 1.05 }],
   },
 });
 

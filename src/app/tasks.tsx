@@ -13,6 +13,7 @@ import { useLocalSearchParams } from 'expo-router';
 import { useStudy } from '@/context/StudyContext';
 import { TaskItem } from '@/components/study/TaskItem';
 import { ModalAddTask } from '@/components/study/ModalAddTask';
+import { ModalLectureNotesHub } from '@/components/study/ModalLectureNotesHub';
 
 type FilterType = 'all' | 'pending' | 'completed' | 'high';
 
@@ -20,14 +21,17 @@ export default function TasksScreen() {
   const { tasks, categories, colors } = useStudy();
   const params = useLocalSearchParams<{ categoryId?: string; subcategoryId?: string }>();
 
-  const activeCategoryId = params.categoryId || categories[0]?.id || 'cat-uni-works';
-  const activeCategory = categories.find((c) => c.id === activeCategoryId) || categories[0];
+  const [selectedCatId, setSelectedCatId] = useState<string>(
+    params.categoryId || categories[0]?.id || 'cat-uni-works'
+  );
+  const activeCategory = categories.find((c) => c.id === selectedCatId) || categories[0];
 
   const [activeFilter, setActiveFilter] = useState<FilterType>('pending');
   const [selectedSubcategoryFilter, setSelectedSubcategoryFilter] = useState<string>(
     params.subcategoryId || 'all'
   );
   const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
+  const [isNotesModalVisible, setIsNotesModalVisible] = useState<boolean>(false);
 
   // Filtering - strictly show tasks relevant to this category!
   const filteredTasks = tasks.filter((t) => {
@@ -59,38 +63,64 @@ export default function TasksScreen() {
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+      {/* Works Hub Selector (University Works vs English Work) */}
+      <View style={[styles.mainHubSelector, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+        {categories.map((cat) => {
+          const isSelected = activeCategory?.id === cat.id;
+          return (
+            <Pressable
+              key={cat.id}
+              onPress={() => {
+                setSelectedCatId(cat.id);
+                setSelectedSubcategoryFilter('all');
+              }}
+              style={[
+                styles.hubTab,
+                isSelected && { backgroundColor: cat.color },
+              ]}>
+              <Ionicons
+                name={(cat.icon as any) || 'folder'}
+                size={16}
+                color={isSelected ? '#FFF' : cat.color}
+              />
+              <Text
+                style={[
+                  styles.hubTabText,
+                  { color: isSelected ? '#FFF' : colors.text },
+                ]}>
+                {cat.name}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
       {/* Top Header */}
       <View style={styles.header}>
         <View style={styles.headerTitleWrap}>
-          <View style={styles.categoryBadgeRow}>
-            {activeCategory && (
-              <View
-                style={[
-                  styles.catIconCircle,
-                  { backgroundColor: activeCategory.color + '1E' },
-                ]}>
-                <Ionicons
-                  name={(activeCategory.icon as any) || 'school-outline'}
-                  size={20}
-                  color={activeCategory.color}
-                />
-              </View>
-            )}
-            <Text style={[styles.title, { color: colors.text }]}>
-              {activeCategory?.name || 'University Works'}
-            </Text>
-          </View>
+          <Text style={[styles.title, { color: colors.text }]}>
+            {activeCategory?.name || 'University Works'}
+          </Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
             {pendingCount} pending • {completedCount} completed
           </Text>
         </View>
 
-        <Pressable
-          onPress={() => setIsModalVisible(true)}
-          style={[styles.addBtn, { backgroundColor: activeCategory?.color || colors.primary }]}>
-          <Ionicons name="add" size={20} color="#FFF" />
-          <Text style={styles.addBtnText}>New Task</Text>
-        </Pressable>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Pressable
+            onPress={() => setIsNotesModalVisible(true)}
+            style={[styles.notesBtn, { backgroundColor: activeCategory?.color + '18', borderColor: activeCategory?.color + '40' }]}>
+            <Ionicons name="document-text" size={16} color={activeCategory?.color || colors.primary} />
+            <Text style={[styles.notesBtnText, { color: activeCategory?.color || colors.primary }]}>Notes & Quizzes</Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => setIsModalVisible(true)}
+            style={[styles.addBtn, { backgroundColor: activeCategory?.color || colors.primary }]}>
+            <Ionicons name="add" size={18} color="#FFF" />
+            <Text style={styles.addBtnText}>Task</Text>
+          </Pressable>
+        </View>
       </View>
 
       {/* Filter Tabs */}
@@ -193,6 +223,13 @@ export default function TasksScreen() {
 
       {/* Modal Add Task */}
       <ModalAddTask visible={isModalVisible} onClose={() => setIsModalVisible(false)} />
+
+      {/* Modal Lecture Notes & Quizzes */}
+      <ModalLectureNotesHub
+        visible={isNotesModalVisible}
+        onClose={() => setIsNotesModalVisible(false)}
+        category={activeCategory}
+      />
     </SafeAreaView>
   );
 }
@@ -201,13 +238,48 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
+  mainHubSelector: {
+    flexDirection: 'row',
+    marginHorizontal: 20,
+    marginTop: 10,
+    marginBottom: 4,
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 3,
+  },
+  hubTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 9,
+    borderRadius: 11,
+  },
+  hubTabText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  notesBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  notesBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 16,
+    paddingTop: 10,
+    paddingBottom: 14,
   },
   headerTitleWrap: {
     flex: 1,
