@@ -503,14 +503,14 @@ export default function HomeScreen() {
                     styles.categoriesSectionTitle,
                     { color: isDark ? '#FFFFFF' : '#0F172A' },
                   ]}>
-                  Categories & Subjects
+                  Work Plan Categories
                 </Text>
                 <Text
                   style={[
                     styles.categoriesSectionSubtitle,
                     { color: isDark ? '#94A3B8' : '#64748B' },
                   ]}>
-                  {categories.length} active subject categories
+                  {categories.length} active work plan categories
                 </Text>
               </View>
             </View>
