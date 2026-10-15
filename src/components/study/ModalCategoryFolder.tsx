@@ -37,6 +37,7 @@ export const ModalCategoryFolder: React.FC<Props> = ({
     toggleTaskSubItem,
     addTaskSubItem,
     deleteTaskSubItem,
+    updateTaskSubItem,
     addSubcategory,
     getCategoryProgress,
   } = useStudy();
@@ -45,6 +46,8 @@ export const ModalCategoryFolder: React.FC<Props> = ({
   const [selectedSubId, setSelectedSubId] = useState<string>(initialSubcategoryId || 'all');
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newSubTaskInputs, setNewSubTaskInputs] = useState<{ [taskId: string]: string }>({});
+  const [editingSubId, setEditingSubId] = useState<string | null>(null);
+  const [editingSubTitle, setEditingSubTitle] = useState('');
   const [isAddingNewFolder, setIsAddingNewFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
 
@@ -101,6 +104,13 @@ export const ModalCategoryFolder: React.FC<Props> = ({
     if (!text || !text.trim()) return;
     addTaskSubItem(taskId, text.trim());
     setNewSubTaskInputs((prev) => ({ ...prev, [taskId]: '' }));
+  };
+
+  const handleSaveEditSub = (taskId: string, subId: string) => {
+    if (!editingSubTitle.trim()) return;
+    updateTaskSubItem(taskId, subId, editingSubTitle.trim());
+    setEditingSubId(null);
+    setEditingSubTitle('');
   };
 
   const handleCreateNewFolder = () => {
@@ -337,7 +347,7 @@ export const ModalCategoryFolder: React.FC<Props> = ({
                     onPress={() => setIsAddingNewFolder(true)}
                     style={[styles.addFolderBtn, { borderColor: catColor }]}>
                     <Ionicons name="add" size={14} color={catColor} />
-                    <Text style={[styles.addFolderBtnText, { color: catColor }]}>+ Folder</Text>
+                    <Text style={[styles.addFolderBtnText, { color: catColor }]}>Folder</Text>
                   </Pressable>
                 ) : (
                   <View style={[styles.newFolderInline, { backgroundColor: colors.backgroundElement, borderColor: catColor }]}>
@@ -456,36 +466,79 @@ export const ModalCategoryFolder: React.FC<Props> = ({
                         {/* Sub-tasks checklist */}
                         {subs.length > 0 && (
                           <View style={styles.subsListContainer}>
-                            {subs.map((st) => (
-                              <View key={st.id} style={styles.subItemRow}>
-                                <Pressable
-                                  onPress={() => toggleTaskSubItem(t.id, st.id)}
-                                  style={styles.subItemLeft}>
-                                  <View
-                                    style={[
-                                      styles.subCheckbox,
-                                      st.completed && [styles.subCheckboxChecked, { backgroundColor: catColor, borderColor: catColor }],
-                                    ]}>
-                                    {st.completed && <Ionicons name="checkmark" size={11} color="#FFF" />}
+                            {subs.map((st) => {
+                              const isEditingThis = editingSubId === st.id;
+                              if (isEditingThis) {
+                                return (
+                                  <View key={st.id} style={styles.subItemRow}>
+                                    <TextInput
+                                      style={[styles.subItemEditInput, { color: colors.text, borderColor: catColor }]}
+                                      value={editingSubTitle}
+                                      onChangeText={setEditingSubTitle}
+                                      autoFocus
+                                      onSubmitEditing={() => handleSaveEditSub(t.id, st.id)}
+                                      returnKeyType="done"
+                                    />
+                                    <View style={styles.subItemEditActions}>
+                                      <Pressable
+                                        onPress={() => handleSaveEditSub(t.id, st.id)}
+                                        hitSlop={6}
+                                        style={[styles.miniCheckBtn, { backgroundColor: catColor }]}>
+                                        <Ionicons name="checkmark" size={12} color="#FFF" />
+                                      </Pressable>
+                                      <Pressable
+                                        onPress={() => setEditingSubId(null)}
+                                        hitSlop={6}
+                                        style={styles.miniCloseBtn}>
+                                        <Ionicons name="close" size={13} color={colors.textSecondary} />
+                                      </Pressable>
+                                    </View>
                                   </View>
-                                  <Text
-                                    style={[
-                                      styles.subItemText,
-                                      { color: colors.text },
-                                      st.completed && styles.subItemTextDone,
-                                    ]}>
-                                    {st.title}
-                                  </Text>
-                                </Pressable>
+                                );
+                              }
 
-                                <Pressable
-                                  onPress={() => deleteTaskSubItem(t.id, st.id)}
-                                  hitSlop={6}
-                                  style={styles.subItemDelete}>
-                                  <Ionicons name="close" size={13} color={colors.textSecondary} />
-                                </Pressable>
-                              </View>
-                            ))}
+                              return (
+                                <View key={st.id} style={styles.subItemRow}>
+                                  <Pressable
+                                    onPress={() => toggleTaskSubItem(t.id, st.id)}
+                                    style={styles.subItemLeft}>
+                                    <View
+                                      style={[
+                                        styles.subCheckbox,
+                                        st.completed && [styles.subCheckboxChecked, { backgroundColor: catColor, borderColor: catColor }],
+                                      ]}>
+                                      {st.completed && <Ionicons name="checkmark" size={11} color="#FFF" />}
+                                    </View>
+                                    <Text
+                                      style={[
+                                        styles.subItemText,
+                                        { color: colors.text },
+                                        st.completed && styles.subItemTextDone,
+                                      ]}>
+                                      {st.title}
+                                    </Text>
+                                  </Pressable>
+
+                                  <View style={styles.subItemActions}>
+                                    <Pressable
+                                      onPress={() => {
+                                        setEditingSubId(st.id);
+                                        setEditingSubTitle(st.title);
+                                      }}
+                                      hitSlop={6}
+                                      style={styles.subItemActionBtn}>
+                                      <Ionicons name="pencil-outline" size={13} color={colors.textSecondary} />
+                                    </Pressable>
+                                    <Pressable
+                                      onPress={() => deleteTaskSubItem(t.id, st.id)}
+                                      hitSlop={6}
+                                      style={styles.subItemActionBtn}>
+                                      <Ionicons name="trash-outline" size={13} color={colors.danger || '#EF4444'} />
+                                    </Pressable>
+                                  </View>
+                                </View>
+                              );
+                            })}
                           </View>
                         )}
 
@@ -942,6 +995,28 @@ const styles = StyleSheet.create({
   },
   subItemDelete: {
     padding: 4,
+  },
+  subItemActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  subItemActionBtn: {
+    padding: 3,
+  },
+  subItemEditInput: {
+    flex: 1,
+    fontSize: 12,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingVertical: 3,
+    paddingHorizontal: 6,
+    marginRight: 6,
+  },
+  subItemEditActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   addStepRow: {
     flexDirection: 'row',

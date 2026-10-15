@@ -13,7 +13,7 @@ import { Colors, ColorPalette } from '@/constants/theme';
 
 const STORAGE_KEYS = {
   CATEGORIES: '@smart_planner_categories_v12',
-  TASKS: '@smart_planner_tasks_v13',
+  TASKS: '@smart_planner_tasks_v14',
   SCHEDULE: '@smart_planner_schedule_v6',
   WORK_PLANS: '@smart_planner_work_plans_v6',
   FOCUS_LOGS: '@smart_planner_focus_logs_v6',
@@ -46,44 +46,7 @@ export const INITIAL_CATEGORIES: Category[] = [
   },
 ];
 
-export const INITIAL_TASKS: StudyTask[] = [
-  {
-    id: 'task-uni-1',
-    title: 'Software Engineering Lab Assignment',
-    categoryId: 'cat-uni-works',
-    subcategoryId: 'sub-uni-1',
-    dueDate: new Date().toISOString().split('T')[0],
-    priority: 'high',
-    completed: false,
-    estimatedMinutes: 60,
-    progressPercent: 0,
-    subtasks: [],
-  },
-  {
-    id: 'task-uni-2',
-    title: 'Database Systems Midterm Revision',
-    categoryId: 'cat-uni-works',
-    subcategoryId: 'sub-uni-2',
-    dueDate: new Date().toISOString().split('T')[0],
-    priority: 'high',
-    completed: false,
-    estimatedMinutes: 90,
-    progressPercent: 0,
-    subtasks: [],
-  },
-  {
-    id: 'task-eng-1',
-    title: 'IELTS Academic Writing & Speaking Drill',
-    categoryId: 'cat-eng-work',
-    subcategoryId: 'sub-eng-1',
-    dueDate: new Date().toISOString().split('T')[0],
-    priority: 'medium',
-    completed: false,
-    estimatedMinutes: 45,
-    progressPercent: 0,
-    subtasks: [],
-  },
-];
+export const INITIAL_TASKS: StudyTask[] = [];
 
 export const INITIAL_WORK_PLANS: WorkPlan[] = [];
 
@@ -129,6 +92,7 @@ interface StudyContextType {
   toggleTaskSubItem: (taskId: string, subItemId: string) => void;
   addTaskSubItem: (taskId: string, title: string) => void;
   deleteTaskSubItem: (taskId: string, subItemId: string) => void;
+  updateTaskSubItem: (taskId: string, subItemId: string, newTitle: string) => void;
   addGeneratedSubtasks: (taskId: string, items: { title: string }[]) => void;
   // Schedule Actions
   addScheduleSession: (session: Omit<ScheduleSession, 'id' | 'completed'>) => void;
@@ -204,13 +168,35 @@ export const StudyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           await AsyncStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(INITIAL_CATEGORIES));
         }
 
+        const dummyTaskTitles = [
+          'Software Engineering Lab Assignment',
+          'Database Systems Midterm Revision',
+          'IELTS Academic Writing & Speaking Drill',
+          'Meeting With Client',
+          'Redesign Workbox',
+          'Recording Workshop',
+          'Create New Blog Post',
+          'Landing Page Design',
+        ];
+        const dummyTaskIds = ['task-uni-1', 'task-uni-2', 'task-eng-1'];
+
+        // Clean out legacy task storage keys so old dummy tasks are not retained
+        await AsyncStorage.multiRemove([
+          '@smart_planner_tasks_v13',
+          '@smart_planner_tasks_v12',
+          '@smart_planner_tasks_v11',
+          '@smart_planner_tasks_v10',
+          '@smart_planner_tasks_v9',
+        ]);
+
         if (storedTasks) {
           const parsed = JSON.parse(storedTasks);
           const filtered = parsed.filter(
             (t: StudyTask) =>
               t.categoryId !== 'cat-cyber' &&
               t.categoryId !== 'cat-uiux' &&
-              !['Meeting With Client', 'Redesign Workbox', 'Recording Workshop', 'Create New Blog Post', 'Landing Page Design'].includes(t.title)
+              !dummyTaskTitles.includes(t.title) &&
+              !dummyTaskIds.includes(t.id)
           );
           const cleaned = filtered.map((t: StudyTask) => ({
             ...t,
@@ -230,15 +216,11 @@ export const StudyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 !st.id.startsWith('st-7')
             ),
           }));
-          if (cleaned.length > 0) {
-            setTasks(cleaned);
-          } else {
-            setTasks(INITIAL_TASKS);
-            await AsyncStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(INITIAL_TASKS));
-          }
+          setTasks(cleaned);
+          await AsyncStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(cleaned));
         } else {
-          setTasks(INITIAL_TASKS);
-          await AsyncStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(INITIAL_TASKS));
+          setTasks([]);
+          await AsyncStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify([]));
         }
 
         if (storedSchedule) setSchedule(JSON.parse(storedSchedule));
@@ -596,6 +578,24 @@ export const StudyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     saveTasks(updated);
   };
 
+  const updateTaskSubItem = (taskId: string, subItemId: string, newTitle: string) => {
+    if (!newTitle.trim()) return;
+    const updated = tasks.map((t) => {
+      if (t.id === taskId) {
+        const currentSubs = t.subtasks || [];
+        const updatedSubs = currentSubs.map((st) =>
+          st.id === subItemId ? { ...st, title: newTitle.trim() } : st
+        );
+        return {
+          ...t,
+          subtasks: updatedSubs,
+        };
+      }
+      return t;
+    });
+    saveTasks(updated);
+  };
+
   const addGeneratedSubtasks = (taskId: string, items: { title: string }[]) => {
     const updated = tasks.map((t) => {
       if (t.id === taskId) {
@@ -713,6 +713,7 @@ export const StudyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         toggleTaskSubItem,
         addTaskSubItem,
         deleteTaskSubItem,
+        updateTaskSubItem,
         addGeneratedSubtasks,
         addScheduleSession,
         toggleScheduleSession,

@@ -202,7 +202,7 @@ export const CategoryCard: React.FC<Props> = ({
             onPress={() => setIsAddingSub(true)}
             style={[styles.addSubTrigger, { borderColor: category.color + '80' }]}>
             <Ionicons name="add" size={13} color={category.color} />
-            <Text style={[styles.addSubTriggerText, { color: category.color }]}>+ Subcategory</Text>
+            <Text style={[styles.addSubTriggerText, { color: category.color }]}>Subcategory</Text>
           </Pressable>
         ) : (
           <View style={styles.newSubInline}>

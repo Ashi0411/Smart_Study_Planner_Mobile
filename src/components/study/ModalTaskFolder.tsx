@@ -37,12 +37,15 @@ export const ModalTaskFolder: React.FC<Props> = ({
     toggleTaskSubItem,
     addTaskSubItem,
     deleteTaskSubItem,
+    updateTaskSubItem,
     addGeneratedSubtasks,
     toggleTask,
   } = useStudy();
 
   const [activeTab, setActiveTab] = useState<'folder' | 'ai'>('folder');
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
+  const [editingSubId, setEditingSubId] = useState<string | null>(null);
+  const [editingSubTitle, setEditingSubTitle] = useState('');
   const [chatInput, setChatInput] = useState('');
   const [isBotThinking, setIsBotThinking] = useState(false);
 
@@ -84,6 +87,13 @@ export const ModalTaskFolder: React.FC<Props> = ({
     if (!newSubtaskTitle.trim()) return;
     addTaskSubItem(task.id, newSubtaskTitle.trim());
     setNewSubtaskTitle('');
+  };
+
+  const handleSaveEditSub = (subId: string) => {
+    if (!editingSubTitle.trim()) return;
+    updateTaskSubItem(task.id, subId, editingSubTitle.trim());
+    setEditingSubId(null);
+    setEditingSubTitle('');
   };
 
   const handleSendMessage = (customPrompt?: string) => {
@@ -316,46 +326,97 @@ export const ModalTaskFolder: React.FC<Props> = ({
                 </View>
               ) : (
                 <View style={styles.subtasksList}>
-                  {subtasks.map((st) => (
-                    <View
-                      key={st.id}
-                      style={[
-                        styles.subtaskItem,
-                        {
-                          backgroundColor: colors.backgroundElement,
-                          borderColor: colors.cardBorder,
-                        },
-                      ]}>
-                      <Pressable
-                        onPress={() => toggleTaskSubItem(task.id, st.id)}
-                        style={styles.subtaskCheckRow}>
+                  {subtasks.map((st) => {
+                    const isEditingThis = editingSubId === st.id;
+                    if (isEditingThis) {
+                      return (
                         <View
+                          key={st.id}
                           style={[
-                            styles.checkbox,
-                            st.completed && [styles.checkboxChecked, { backgroundColor: themeColor, borderColor: themeColor }],
+                            styles.subtaskItem,
+                            {
+                              backgroundColor: colors.backgroundElement,
+                              borderColor: themeColor,
+                            },
                           ]}>
-                          {st.completed && (
-                            <Ionicons name="checkmark" size={12} color="#FFF" />
-                          )}
+                          <TextInput
+                            style={[styles.inlineEditInput, { color: colors.text }]}
+                            value={editingSubTitle}
+                            onChangeText={setEditingSubTitle}
+                            autoFocus
+                            onSubmitEditing={() => handleSaveEditSub(st.id)}
+                            returnKeyType="done"
+                          />
+                          <View style={styles.inlineActionButtons}>
+                            <Pressable
+                              onPress={() => handleSaveEditSub(st.id)}
+                              hitSlop={8}
+                              style={[styles.miniCheckBtn, { backgroundColor: themeColor }]}>
+                              <Ionicons name="checkmark" size={14} color="#FFF" />
+                            </Pressable>
+                            <Pressable
+                              onPress={() => setEditingSubId(null)}
+                              hitSlop={8}
+                              style={styles.miniCloseBtn}>
+                              <Ionicons name="close" size={14} color={colors.textSecondary} />
+                            </Pressable>
+                          </View>
                         </View>
-                        <Text
-                          style={[
-                            styles.subtaskText,
-                            { color: colors.text },
-                            st.completed && styles.subtaskTextDone,
-                          ]}>
-                          {st.title}
-                        </Text>
-                      </Pressable>
+                      );
+                    }
 
-                      <Pressable
-                        onPress={() => deleteTaskSubItem(task.id, st.id)}
-                        hitSlop={8}
-                        style={styles.subtaskDeleteBtn}>
-                        <Ionicons name="trash-outline" size={14} color={colors.textSecondary} />
-                      </Pressable>
-                    </View>
-                  ))}
+                    return (
+                      <View
+                        key={st.id}
+                        style={[
+                          styles.subtaskItem,
+                          {
+                            backgroundColor: colors.backgroundElement,
+                            borderColor: colors.cardBorder,
+                          },
+                        ]}>
+                        <Pressable
+                          onPress={() => toggleTaskSubItem(task.id, st.id)}
+                          style={styles.subtaskCheckRow}>
+                          <View
+                            style={[
+                              styles.checkbox,
+                              st.completed && [styles.checkboxChecked, { backgroundColor: themeColor, borderColor: themeColor }],
+                            ]}>
+                            {st.completed && (
+                              <Ionicons name="checkmark" size={12} color="#FFF" />
+                            )}
+                          </View>
+                          <Text
+                            style={[
+                              styles.subtaskText,
+                              { color: colors.text },
+                              st.completed && styles.subtaskTextDone,
+                            ]}>
+                            {st.title}
+                          </Text>
+                        </Pressable>
+
+                        <View style={styles.subtaskActions}>
+                          <Pressable
+                            onPress={() => {
+                              setEditingSubId(st.id);
+                              setEditingSubTitle(st.title);
+                            }}
+                            hitSlop={8}
+                            style={styles.subtaskActionBtn}>
+                            <Ionicons name="pencil-outline" size={15} color={colors.textSecondary} />
+                          </Pressable>
+                          <Pressable
+                            onPress={() => deleteTaskSubItem(task.id, st.id)}
+                            hitSlop={8}
+                            style={styles.subtaskActionBtn}>
+                            <Ionicons name="trash-outline" size={15} color={colors.danger || '#EF4444'} />
+                          </Pressable>
+                        </View>
+                      </View>
+                    );
+                  })}
                 </View>
               )}
 
@@ -824,6 +885,40 @@ const styles = StyleSheet.create({
   },
   subtaskDeleteBtn: {
     padding: 4,
+  },
+  subtaskActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  subtaskActionBtn: {
+    padding: 4,
+  },
+  inlineEditInput: {
+    flex: 1,
+    fontSize: 13,
+    paddingVertical: 4,
+    paddingHorizontal: 4,
+    marginRight: 8,
+  },
+  inlineActionButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  miniCheckBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  miniCloseBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   addSubtaskRow: {
     flexDirection: 'row',

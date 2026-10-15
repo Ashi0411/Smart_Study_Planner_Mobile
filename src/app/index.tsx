@@ -201,7 +201,7 @@ export default function HomeScreen() {
       title: 'Study & Work Plans',
       subtitle: `Organize university works & study plans\nTrack your daily focus sessions`,
       progress: 0,
-      btnText: '+ Add First Plan',
+      btnText: 'Add First Plan',
       action: () => setIsTaskModalVisible(true),
     };
   }, [tasks, router]);
@@ -527,7 +527,7 @@ export default function HomeScreen() {
                 (hovered || pressed) && { opacity: 0.8 },
               ]}>
               <Ionicons name="add" size={15} color="#6366F1" />
-              <Text style={styles.addCategoryHeaderBtnText}>+ Category</Text>
+              <Text style={styles.addCategoryHeaderBtnText}>Category</Text>
             </Pressable>
           </View>
 
