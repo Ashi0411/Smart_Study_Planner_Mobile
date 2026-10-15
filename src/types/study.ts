@@ -86,3 +86,39 @@ export interface StudyStats {
   weeklyGoalHours: number;
   studyScore: number;
 }
+
+export interface LectureNote {
+  id: string;
+  title: string;
+  categoryId: string;
+  subcategoryId?: string;
+  originalContent: string;
+  fileName?: string;
+  fileSize?: number;
+  createdAt: string;
+  summaryEnglish: string;
+  summarySinhala: string;
+  keyPoints: string[];
+}
+
+export interface QuizQuestion {
+  id: string;
+  question: string;
+  options: string[];
+  correctAnswerIndex: number;
+  explanation: string;
+}
+
+export interface QuizRecord {
+  id: string;
+  noteId?: string;
+  title: string;
+  categoryId: string;
+  totalQuestions: number;
+  score: number;
+  percentage: number;
+  completedAt: string;
+  questions: QuizQuestion[];
+  userAnswers: { [questionId: string]: number };
+}
+

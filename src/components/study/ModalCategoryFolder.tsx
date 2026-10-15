@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useStudy } from '@/context/StudyContext';
 import { Category } from '@/types/study';
 import { generateBotResponse, ChatMessage } from '@/services/aiStudyBot';
+import { ModalLectureNotesHub } from './ModalLectureNotesHub';
 
 interface Props {
   visible: boolean;
@@ -44,6 +45,7 @@ export const ModalCategoryFolder: React.FC<Props> = ({
 
   const [activeTab, setActiveTab] = useState<'folders' | 'ai'>('folders');
   const [selectedSubId, setSelectedSubId] = useState<string>(initialSubcategoryId || 'all');
+  const [isNotesHubVisible, setIsNotesHubVisible] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newSubTaskInputs, setNewSubTaskInputs] = useState<{ [taskId: string]: string }>({});
   const [editingSubId, setEditingSubId] = useState<string | null>(null);
@@ -248,6 +250,26 @@ export const ModalCategoryFolder: React.FC<Props> = ({
                   activeTab === 'ai' && { fontWeight: '700' },
                 ]}>
                 AI Study Bot 🤖
+              </Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => setIsNotesHubVisible(true)}
+              style={[
+                styles.tabBtn,
+                { backgroundColor: catColor + '18' },
+              ]}>
+              <Ionicons
+                name="document-text"
+                size={16}
+                color={catColor}
+              />
+              <Text
+                style={[
+                  styles.tabBtnText,
+                  { color: catColor, fontWeight: '700' },
+                ]}>
+                Notes & Quizzes
               </Text>
             </Pressable>
           </View>
@@ -706,6 +728,13 @@ export const ModalCategoryFolder: React.FC<Props> = ({
               </View>
             </View>
           )}
+
+          {/* Lecture Notes & Quizzes Modal */}
+          <ModalLectureNotesHub
+            visible={isNotesHubVisible}
+            onClose={() => setIsNotesHubVisible(false)}
+            category={category}
+          />
         </View>
       </KeyboardAvoidingView>
     </Modal>

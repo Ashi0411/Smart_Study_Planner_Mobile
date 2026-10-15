@@ -10,6 +10,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Category, Subcategory } from '@/types/study';
 import { useStudy } from '@/context/StudyContext';
+import { ModalLectureNotesHub } from './ModalLectureNotesHub';
 
 interface Props {
   category: Category;
@@ -37,6 +38,7 @@ export const CategoryCard: React.FC<Props> = ({
   const [newSubName, setNewSubName] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(category.name);
+  const [isNotesHubVisible, setIsNotesHubVisible] = useState(false);
 
   const handleSaveEdit = () => {
     if (!editName.trim()) return;
@@ -233,6 +235,32 @@ export const CategoryCard: React.FC<Props> = ({
           </View>
         )}
       </View>
+
+      {/* Lecture Notes & Quizzes Hub Trigger */}
+      <Pressable
+        onPress={() => setIsNotesHubVisible(true)}
+        style={[
+          styles.notesHubTriggerBtn,
+          {
+            backgroundColor: category.color + '12',
+            borderColor: category.color + '33',
+          },
+        ]}>
+        <View style={[styles.notesHubIconWrap, { backgroundColor: category.color }]}>
+          <Ionicons name="document-text" size={13} color="#FFF" />
+        </View>
+        <Text style={[styles.notesHubTriggerText, { color: category.color }]}>
+          Lecture Notes, Summaries & Quizzes
+        </Text>
+        <Ionicons name="sparkles" size={13} color={category.color} />
+      </Pressable>
+
+      {/* Lecture Notes & Quizzes Modal */}
+      <ModalLectureNotesHub
+        visible={isNotesHubVisible}
+        onClose={() => setIsNotesHubVisible(false)}
+        category={category}
+      />
     </View>
   );
 };
@@ -259,6 +287,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    flex: 1,
+  },
+  notesHubTriggerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginTop: 10,
+  },
+  notesHubIconWrap: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  notesHubTriggerText: {
+    fontSize: 12,
+    fontWeight: '700',
     flex: 1,
   },
   iconWrap: {

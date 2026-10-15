@@ -8,6 +8,8 @@ import {
   FocusLog,
   FocusMode,
   WorkPlan,
+  LectureNote,
+  QuizRecord,
 } from '@/types/study';
 import { Colors, ColorPalette } from '@/constants/theme';
 
@@ -19,6 +21,8 @@ const STORAGE_KEYS = {
   FOCUS_LOGS: '@smart_planner_focus_logs_v6',
   STREAK: '@smart_planner_streak_v6',
   THEME_MODE: '@smart_planner_theme_mode_v6',
+  LECTURE_NOTES: '@smart_planner_lecture_notes_v1',
+  QUIZ_RECORDS: '@smart_planner_quiz_records_v1',
 };
 
 export const INITIAL_CATEGORIES: Category[] = [
@@ -105,6 +109,15 @@ interface StudyContextType {
   completedTasksToday: number;
   pendingTasksCount: number;
   todaySchedule: ScheduleSession[];
+  // Lecture Notes & Quizzes
+  lectureNotes: LectureNote[];
+  quizRecords: QuizRecord[];
+  addLectureNote: (note: Omit<LectureNote, 'id' | 'createdAt'>) => LectureNote;
+  deleteLectureNote: (noteId: string) => void;
+  saveQuizRecord: (record: Omit<QuizRecord, 'id' | 'completedAt'>) => QuizRecord;
+  deleteQuizRecord: (recordId: string) => void;
+  getNotesByCategory: (categoryId: string) => LectureNote[];
+  getQuizzesByCategory: (categoryId: string) => QuizRecord[];
   clearAllData: () => Promise<void>;
 }
 
@@ -117,6 +130,8 @@ export const StudyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [workPlans, setWorkPlans] = useState<WorkPlan[]>(INITIAL_WORK_PLANS);
   const [focusLogs, setFocusLogs] = useState<FocusLog[]>([]);
   const [streakDays, setStreakDays] = useState<number>(0);
+  const [lectureNotes, setLectureNotes] = useState<LectureNote[]>([]);
+  const [quizRecords, setQuizRecords] = useState<QuizRecord[]>([]);
   const [dailyGoalMinutes] = useState<number>(120);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [themeMode, setThemeMode] = useState<'light' | 'dark'>('light');
@@ -133,6 +148,8 @@ export const StudyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           storedFocusLogs,
           storedStreak,
           storedTheme,
+          storedNotes,
+          storedQuizzes,
         ] = await Promise.all([
           AsyncStorage.getItem(STORAGE_KEYS.CATEGORIES),
           AsyncStorage.getItem(STORAGE_KEYS.TASKS),
@@ -141,7 +158,12 @@ export const StudyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           AsyncStorage.getItem(STORAGE_KEYS.FOCUS_LOGS),
           AsyncStorage.getItem(STORAGE_KEYS.STREAK),
           AsyncStorage.getItem(STORAGE_KEYS.THEME_MODE),
+          AsyncStorage.getItem(STORAGE_KEYS.LECTURE_NOTES),
+          AsyncStorage.getItem(STORAGE_KEYS.QUIZ_RECORDS),
         ]);
+
+        if (storedNotes) setLectureNotes(JSON.parse(storedNotes));
+        if (storedQuizzes) setQuizRecords(JSON.parse(storedQuizzes));
 
         if (storedCategories) {
           const parsed = JSON.parse(storedCategories);
@@ -650,6 +672,55 @@ export const StudyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     saveFocusLogs([newLog, ...focusLogs]);
   };
 
+  // Lecture Notes & Quizzes Actions
+  const saveLectureNotes = async (newNotes: LectureNote[]) => {
+    setLectureNotes(newNotes);
+    await AsyncStorage.setItem(STORAGE_KEYS.LECTURE_NOTES, JSON.stringify(newNotes));
+  };
+
+  const saveQuizRecords = async (newRecords: QuizRecord[]) => {
+    setQuizRecords(newRecords);
+    await AsyncStorage.setItem(STORAGE_KEYS.QUIZ_RECORDS, JSON.stringify(newRecords));
+  };
+
+  const addLectureNote = (noteData: Omit<LectureNote, 'id' | 'createdAt'>): LectureNote => {
+    const newNote: LectureNote = {
+      ...noteData,
+      id: 'note-' + Date.now().toString(),
+      createdAt: new Date().toISOString(),
+    };
+    const updated = [newNote, ...lectureNotes];
+    saveLectureNotes(updated);
+    return newNote;
+  };
+
+  const deleteLectureNote = (noteId: string) => {
+    saveLectureNotes(lectureNotes.filter((n) => n.id !== noteId));
+  };
+
+  const saveQuizRecord = (recordData: Omit<QuizRecord, 'id' | 'completedAt'>): QuizRecord => {
+    const newRecord: QuizRecord = {
+      ...recordData,
+      id: 'quiz-' + Date.now().toString(),
+      completedAt: new Date().toISOString(),
+    };
+    const updated = [newRecord, ...quizRecords];
+    saveQuizRecords(updated);
+    return newRecord;
+  };
+
+  const deleteQuizRecord = (recordId: string) => {
+    saveQuizRecords(quizRecords.filter((r) => r.id !== recordId));
+  };
+
+  const getNotesByCategory = (categoryId: string) => {
+    return lectureNotes.filter((n) => n.categoryId === categoryId);
+  };
+
+  const getQuizzesByCategory = (categoryId: string) => {
+    return quizRecords.filter((r) => r.categoryId === categoryId);
+  };
+
   const clearAllData = async () => {
     setTasks([]);
     setSchedule([]);
@@ -723,6 +794,14 @@ export const StudyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         completedTasksToday,
         pendingTasksCount,
         todaySchedule,
+        lectureNotes,
+        quizRecords,
+        addLectureNote,
+        deleteLectureNote,
+        saveQuizRecord,
+        deleteQuizRecord,
+        getNotesByCategory,
+        getQuizzesByCategory,
         clearAllData,
       }}>
       {children}

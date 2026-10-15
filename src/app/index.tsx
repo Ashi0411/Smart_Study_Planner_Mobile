@@ -26,6 +26,7 @@ import { CategoryCard } from '@/components/study/CategoryCard';
 import { ModalTaskFolder } from '@/components/study/ModalTaskFolder';
 import { ModalCategoryFolder } from '@/components/study/ModalCategoryFolder';
 import { ModalAIChat } from '@/components/study/ModalAIChat';
+import { ModalLectureNotesHub } from '@/components/study/ModalLectureNotesHub';
 
 
 
@@ -37,6 +38,8 @@ export default function HomeScreen() {
     categories,
     tasks,
     themeMode,
+    lectureNotes,
+    quizRecords,
     toggleTask,
   } = useStudy();
 
@@ -52,6 +55,8 @@ export default function HomeScreen() {
   const [initialSubFolderId, setInitialSubFolderId] = useState<string | undefined>(undefined);
   const [isCategoryFolderModalVisible, setIsCategoryFolderModalVisible] = useState(false);
   const [isAiChatVisible, setIsAiChatVisible] = useState(false);
+  const [isNotesHubVisible, setIsNotesHubVisible] = useState(false);
+  const [notesHubCategory, setNotesHubCategory] = useState<Category | null>(null);
 
   // Calendar view modes: daily | monthly | yearly
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<Date>(() => new Date());
@@ -105,6 +110,11 @@ export default function HomeScreen() {
     },
     []
   );
+
+  const handleOpenNotesHub = useCallback((cat: Category) => {
+    setNotesHubCategory(cat);
+    setIsNotesHubVisible(true);
+  }, []);
 
   // Open folder for a clicked task card
   const handleOpenTaskFolder = useCallback(
@@ -486,6 +496,75 @@ export default function HomeScreen() {
         )}
 
 
+        {/* AI Lecture Notes & Quizzes Hub Section */}
+        <View style={styles.notesHubSection}>
+          <View style={styles.notesHubSectionHeader}>
+            <View style={styles.categoriesSectionTitleRow}>
+              <View
+                style={[
+                  styles.categoriesIconCircle,
+                  { backgroundColor: isDark ? '#312E81' : '#EEF2FF' },
+                ]}>
+                <Ionicons name="sparkles" size={17} color="#6366F1" />
+              </View>
+              <View>
+                <Text
+                  style={[
+                    styles.categoriesSectionTitle,
+                    { color: isDark ? '#FFFFFF' : '#0F172A' },
+                  ]}>
+                  AI Lecture Notes & Quizzes
+                </Text>
+                <Text
+                  style={[
+                    styles.categoriesSectionSubtitle,
+                    { color: isDark ? '#94A3B8' : '#64748B' },
+                  ]}>
+                  Upload Notes • Short Notes (සිංහල / EN) • Quizzes
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.notesHubCardsRow}>
+            {categories.slice(0, 2).map((cat) => {
+              const notesCount = lectureNotes.filter((n) => n.categoryId === cat.id).length;
+              const quizCount = quizRecords.filter((q) => q.categoryId === cat.id).length;
+
+              return (
+                <Pressable
+                  key={cat.id}
+                  onPress={() => handleOpenNotesHub(cat)}
+                  style={[
+                    styles.notesHubCard,
+                    {
+                      backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                      borderColor: isDark ? '#334155' : '#E2E8F0',
+                    },
+                  ]}>
+                  <View style={[styles.notesHubCardIconWrap, { backgroundColor: cat.color + '1A' }]}>
+                    <Ionicons
+                      name={(cat.icon as any) || 'school'}
+                      size={20}
+                      color={cat.color}
+                    />
+                  </View>
+                  <Text style={[styles.notesHubCardName, { color: isDark ? '#FFF' : '#0F172A' }]}>
+                    {cat.name}
+                  </Text>
+                  <Text style={[styles.notesHubCardMeta, { color: isDark ? '#94A3B8' : '#64748B' }]}>
+                    {notesCount} notes • {quizCount} quizzes
+                  </Text>
+                  <View style={[styles.notesHubCardAction, { backgroundColor: cat.color }]}>
+                    <Text style={styles.notesHubCardActionText}>Open Hub</Text>
+                    <Ionicons name="arrow-forward" size={12} color="#FFF" />
+                  </View>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
         {/* Categories & Subjects Section */}
         <View style={styles.categoriesSection}>
           <View style={styles.categoriesSectionHeader}>
@@ -684,6 +763,13 @@ export default function HomeScreen() {
           <Text style={styles.floatingAiFabText}>Ask AI Bot</Text>
         </LinearGradient>
       </Pressable>
+
+      {/* AI Lecture Notes & Quizzes Hub Modal */}
+      <ModalLectureNotesHub
+        visible={isNotesHubVisible}
+        onClose={() => setIsNotesHubVisible(false)}
+        category={notesHubCategory}
+      />
     </SafeAreaView>
   );
 }
@@ -1159,5 +1245,59 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
     letterSpacing: -0.2,
+  },
+  /* Notes Hub Section styles */
+  notesHubSection: {
+    paddingHorizontal: 20,
+    marginTop: 20,
+    marginBottom: 4,
+  },
+  notesHubSectionHeader: {
+    marginBottom: 12,
+  },
+  notesHubCardsRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  notesHubCard: {
+    flex: 1,
+    padding: 14,
+    borderRadius: 18,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  notesHubCardIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  notesHubCardName: {
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 3,
+  },
+  notesHubCardMeta: {
+    fontSize: 11,
+    marginBottom: 10,
+  },
+  notesHubCardAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: 6,
+    borderRadius: 10,
+  },
+  notesHubCardActionText: {
+    color: '#FFF',
+    fontSize: 11,
+    fontWeight: '700',
   },
 });
